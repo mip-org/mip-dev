@@ -8,8 +8,8 @@ workflow on approval.
 
 Free-form input. Each non-empty line of the body (or title) may contain:
 
-  1. A package path `packages/<name>/<version>` (bare or inside a GitHub
-     URL — only the path portion is used) OR the keyword `all-packages`
+  1. A package reference `<name>@<release>` (resolved to the channel
+     folder `packages/<name>/<release>`) OR the keyword `all-packages`
      to mean "every package in this channel".
   2. One or more architecture keywords:
      `any`, `linux_x86_64`, `macos_arm64`, `windows_x86_64`, or `all`.
@@ -19,18 +19,19 @@ Free-form input. Each non-empty line of the body (or title) may contain:
 
 `all` expands to every supported architecture declared in the package's
 `mip.yaml` (intersected with the channel's supported arch list above).
-If the channel has no local `mip.yaml` for the package (e.g. recipe-only
-packages), `all` expands to every supported arch.
+A package with no channel-side `mip.yaml`, or one that declares no
+supported architecture, cannot expand `all` and is reported as an error.
 
 `all-packages <arch>` dispatches every channel package (those with a
-`packages/<name>/<version>/recipe.yaml`) for the given arch. A specific
-arch (e.g. `linux_x86_64`) only emits packages whose mip.yaml declares
-that arch; `all` emits each package's full declared set. Recipe-only
-packages (no channel-side mip.yaml) are treated as supporting every arch.
+`packages/<name>/<release>/recipe.yaml`) for the given arch, restricted
+to the architectures each package's `mip.yaml` declares. A specific arch
+(e.g. `linux_x86_64`) only emits packages whose mip.yaml declares that
+arch; `all` emits each package's full declared set. Packages without a
+channel-side mip.yaml emit nothing.
 
-A line with a path or `all-packages` but no arch is an error. Lines
-with neither are ignored (free-form context). Multiple paths on the
-same line is an error.
+A line with a package reference or `all-packages` but no arch is an
+error. Lines with neither are ignored (free-form context). Multiple
+package references on the same line is an error.
 
 Subcommands:
 
@@ -52,8 +53,10 @@ from pathlib import Path
 import yaml
 
 
-PACKAGE_PATH_RE = re.compile(
-    r"\bpackages/[A-Za-z0-9._+\-]+/[A-Za-z0-9._+\-]+"
+# `<name>@<release>` reference, e.g. `fmm2d@main`. Both segments use the
+# same character class as the on-disk folder names.
+PACKAGE_REF_RE = re.compile(
+    r"\b([A-Za-z0-9._+\-]+)@([A-Za-z0-9._+\-]+)"
 )
 
 SUPPORTED_ARCHITECTURES = (
@@ -71,11 +74,7 @@ FORCE_RE = re.compile(r"\bforce\b", re.IGNORECASE)
 
 ALL_PACKAGES_RE = re.compile(r"^all[-_]packages\b", re.IGNORECASE)
 
-URL_RE = re.compile(
-    r"https://github\.com/[^/\s]+/[^/\s]+/tree/[^/\s]+/[^\s)]+"
-)
-
-PATH_FORMAT_HINT = "    packages/<name>/<version>"
+PATH_FORMAT_HINT = "    <name>@<release>"
 
 
 def get_effective_body():
@@ -107,14 +106,13 @@ def list_all_packages(repo_root):
 def arches_from_mip_yaml(pkg_dir):
     """Arches declared in mip.yaml, intersected with SUPPORTED_ARCHITECTURES.
 
-    Returns a list ordered by SUPPORTED_ARCHITECTURES. If mip.yaml is
-    missing in the channel (recipe-only package), returns the full
-    SUPPORTED_ARCHITECTURES list — `all` then dispatches each, and per-arch
-    prepare exits silently for arches the upstream mip.yaml doesn't list.
+    Returns a list ordered by SUPPORTED_ARCHITECTURES. If the channel has
+    no `mip.yaml` for the package, returns an empty list — `all` cannot be
+    expanded without a declared architecture set.
     """
     mip_yaml = pkg_dir / "mip.yaml"
     if not mip_yaml.is_file():
-        return list(SUPPORTED_ARCHITECTURES)
+        return []
     with open(mip_yaml) as f:
         config = yaml.safe_load(f) or {}
     declared = set()
@@ -131,7 +129,6 @@ def parse_issue(body, repo_root):
     errors: list of human-readable error strings (markdown bullet bodies).
     """
     body = body.replace("\r", "")
-    body = URL_RE.sub(" ", body)
 
     entries = []
     errors = []
@@ -181,27 +178,28 @@ def parse_issue(body, repo_root):
                     })
             continue
 
-        paths = list(dict.fromkeys(PACKAGE_PATH_RE.findall(line)))
-        if not paths:
+        refs = list(dict.fromkeys(PACKAGE_REF_RE.findall(line)))
+        if not refs:
             continue
 
-        if len(paths) > 1:
-            joined = ", ".join(f"`{p}`" for p in paths)
+        if len(refs) > 1:
+            joined = ", ".join(f"`{n}@{v}`" for n, v in refs)
             errors.append(
-                f"- Line {line_num} has multiple package paths "
+                f"- Line {line_num} has multiple package references "
                 f"({joined}); put one per line."
             )
             continue
 
-        package_path = paths[0]
-        line_for_keywords = PACKAGE_PATH_RE.sub(" ", line)
+        name, version = refs[0]
+        package_path = f"packages/{name}/{version}"
+        line_for_keywords = PACKAGE_REF_RE.sub(" ", line)
         line_archs = list(dict.fromkeys(ARCH_RE.findall(line_for_keywords)))
         force = bool(FORCE_RE.search(line_for_keywords))
 
         if not line_archs:
             valid = ", ".join(f"`{a}`" for a in VALID_ARCH_KEYWORDS)
             errors.append(
-                f"- Line {line_num}: `{package_path}` has no architecture. "
+                f"- Line {line_num}: `{name}@{version}` has no architecture. "
                 f"Add one of: {valid}."
             )
             continue
@@ -209,12 +207,9 @@ def parse_issue(body, repo_root):
         folder = repo_root / package_path
         if not folder.is_dir():
             errors.append(
-                f"- `{package_path}` does not exist in this channel."
+                f"- `{name}@{version}` does not exist in this channel."
             )
             continue
-
-        parts = package_path.split("/")
-        name, version = parts[1], parts[2]
 
         expanded = []
         for arch in line_archs:
@@ -222,8 +217,8 @@ def parse_issue(body, repo_root):
                 pkg_arches = arches_from_mip_yaml(folder)
                 if not pkg_arches:
                     errors.append(
-                        f"- `{package_path}` declares no supported "
-                        f"architectures; cannot expand `all`."
+                        f"- `{name}@{version}` declares no supported "
+                        f"architectures in its mip.yaml; cannot expand `all`."
                     )
                     continue
                 expanded.extend(pkg_arches)
@@ -241,8 +236,8 @@ def parse_issue(body, repo_root):
 
     if not entries and not errors:
         errors.append(
-            "- No package path found. Include at least one line of the form:"
-            f"\n\n{PATH_FORMAT_HINT} <architecture>"
+            "- No package reference found. Include at least one line of "
+            f"the form:\n\n{PATH_FORMAT_HINT} <architecture>"
         )
 
     # Dedupe by (path, arch); if any duplicate set force=true, the merged
@@ -270,7 +265,7 @@ def render_validation_comment(entries, errors):
             "Edit the issue body or open a new one. Each build line "
             "should look like:",
             "",
-            "    packages/<name>/<version> <arch>",
+            "    <name>@<release> <arch>",
             "",
             "Valid architectures: "
             + ", ".join(f"`{a}`" for a in VALID_ARCH_KEYWORDS) + ".",
@@ -291,7 +286,7 @@ def render_validation_comment(entries, errors):
     for e in entries:
         suffix = ", force" if e["force"] else ""
         lines.append(
-            f"- `{e['package_path']}` ({e['architecture']}{suffix})"
+            f"- `{e['name']}@{e['version']}` ({e['architecture']}{suffix})"
         )
     lines += [
         "",
@@ -310,7 +305,7 @@ def canonical_title(entries):
         return None
     e = entries[0]
     suffix = ", force" if e["force"] else ""
-    return f"Build: `{e['package_path']}` ({e['architecture']}{suffix})"
+    return f"Build: `{e['name']}@{e['version']}` ({e['architecture']}{suffix})"
 
 
 def cmd_validate(args):
