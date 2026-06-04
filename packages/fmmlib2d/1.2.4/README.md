@@ -32,13 +32,14 @@ Pre-compiled MEX binaries ship for `linux_x86_64`, `macos_arm64`, and
 `windows_x86_64`. Intel macOS is not currently built. There is no
 pure-MATLAB fallback — the package needs the MEX to do any work.
 
-The Linux MEX statically links `libgfortran`, `libquadmath`, `libgomp`,
-`libstdc++`, and `libgcc` so it runs on end-user machines that do not have a
-matching gfortran runtime installed. The macOS MEX statically links
-`libgfortran`, `libquadmath`, and `libgomp`; `libc++` and the system runtime
-come from the OS. The Windows MEX is built with MinGW-w64 and statically
-links the gfortran/OpenMP runtime via MATLAB's `mingw64.xml`, so the
-`.mexw64` carries no MinGW runtime DLL dependency.
+The Linux MEX links the gfortran/OpenMP runtime dynamically and then bundles
+`libgfortran`, `libquadmath`, and `libgomp` next to the MEX with an `$ORIGIN`
+RPATH, so it runs on end-user machines that do not have a matching gfortran
+runtime installed. The macOS MEX statically links `libgfortran`,
+`libquadmath`, and `libgomp`; `libc++` and the system runtime come from the
+OS. The Windows MEX is built with MinGW-w64 and statically links the
+gfortran/OpenMP runtime via MATLAB's `mingw64.xml`, so the `.mexw64` carries
+no MinGW runtime DLL dependency.
 
 OpenMP is enabled (`-fopenmp`); the parallel tree builder `d2tstrcr_omp.f`
 uses all available threads. Set `OMP_NUM_THREADS` to control parallelism.

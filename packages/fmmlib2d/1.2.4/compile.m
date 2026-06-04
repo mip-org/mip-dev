@@ -4,9 +4,12 @@
 % The upstream matlab/fmm2d.c is a pre-generated mwrap gateway; we compile
 % the Fortran library sources under src/ to object files, then link them
 % with fmm2d.c into a MEX file placed next to the .m shims in matlab/.
-% libgfortran, libquadmath, and libgomp are statically linked so the bundle
-% runs on end-user machines without a matching gfortran runtime installed.
-% OpenMP is enabled (-fopenmp); d2tstrcr_omp.f parallelizes the tree build.
+% The Fortran/OpenMP runtime (libgfortran, libquadmath, libgomp) is made
+% self-contained per platform: statically linked on macOS (Homebrew ships
+% the .a archives), and dynamically linked then vendored next to the MEX via
+% bundle_runtime_libs on Linux (the ubi8 build container has no static
+% archives). OpenMP is enabled (-fopenmp); d2tstrcr_omp.f parallelizes the
+% tree build.
 
 fprintf('=== Compiling fmmlib2d MEX file ===\n');
 
@@ -62,30 +65,46 @@ for i = 1:numel(objs)
     mexArgs{end+1} = objs{i}; %#ok<AGROW>
 end
 
-% Statically link the Fortran/OpenMP runtime (libgfortran, libquadmath,
-% libgomp) so the MEX runs on end-user machines without a matching gfortran
-% runtime. The toolchain's libgfortran.a / libquadmath.a / libgomp.a must be
-% -fPIC for this to succeed; Ubuntu's apt gcc-10+ and Homebrew gfortran both
-% qualify. libgomp is listed last so the Fortran objects' GOMP_* references
-% resolve against it.
-libgfortran_a = strtrim(run_cmd('gfortran --print-file-name=libgfortran.a'));
-libquadmath_a = strtrim(run_cmd('gfortran --print-file-name=libquadmath.a'));
-libgomp_a = strtrim(run_cmd('gfortran --print-file-name=libgomp.a'));
-fprintf('libgfortran: %s\n', libgfortran_a);
-fprintf('libquadmath: %s\n', libquadmath_a);
-fprintf('libgomp: %s\n', libgomp_a);
-mexArgs{end+1} = libgfortran_a;
-mexArgs{end+1} = libquadmath_a;
-mexArgs{end+1} = libgomp_a;
-
-if isunix && ~ismac
-    mexArgs{end+1} = 'LDFLAGS=$LDFLAGS -static-libgcc -static-libstdc++';
+if ismac
+    % Homebrew gfortran ships static archives (libgfortran.a / libquadmath.a
+    % / libgomp.a), so bake the Fortran/OpenMP runtime into the MEX; libc++
+    % and the system runtime come from the OS. libgomp is listed last so the
+    % Fortran objects' GOMP_* references resolve against it.
+    libgfortran_a = strtrim(run_cmd('gfortran --print-file-name=libgfortran.a'));
+    libquadmath_a = strtrim(run_cmd('gfortran --print-file-name=libquadmath.a'));
+    libgomp_a = strtrim(run_cmd('gfortran --print-file-name=libgomp.a'));
+    fprintf('libgfortran: %s\n', libgfortran_a);
+    fprintf('libquadmath: %s\n', libquadmath_a);
+    fprintf('libgomp: %s\n', libgomp_a);
+    mexArgs{end+1} = libgfortran_a;
+    mexArgs{end+1} = libquadmath_a;
+    mexArgs{end+1} = libgomp_a;
+else
+    % Linux: the ubi8 build container provides only the shared libgfortran /
+    % libquadmath (no static archives), so link them dynamically and let
+    % bundle_runtime_libs vendor the .so files next to the MEX with an
+    % $ORIGIN RPATH. This is the channel's standard self-containment path
+    % on Linux (see packages/fmm2d). Resolve the runtime dir from the shared
+    % libgfortran so -L points at the system gcc, not MATLAB's bundled libs.
+    fdir = fileparts(strtrim(run_cmd('gfortran --print-file-name=libgfortran.so')));
+    fprintf('gfortran runtime dir: %s\n', fdir);
+    mexArgs{end+1} = ['-L' fdir];
+    mexArgs{end+1} = '-lgfortran';
+    mexArgs{end+1} = '-lquadmath';
+    mexArgs{end+1} = '-lgomp';
 end
 
 mexArgs{end+1} = '-output';
 mexArgs{end+1} = fullfile(matlabDir, 'fmm2d');
 
 mex(mexArgs{:});
+
+if isunix && ~ismac
+    % Vendor libgfortran/libquadmath/libgomp next to the MEX and patch RPATH
+    % so it loads them via $ORIGIN, surviving the workflow's post-build strip
+    % of the compiler runtime from the linker path.
+    bundle_runtime_libs(fullfile(matlabDir, ['fmm2d.' mexext]));
+end
 
 fprintf('=== fmmlib2d MEX compilation complete ===\n');
 
