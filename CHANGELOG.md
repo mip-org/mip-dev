@@ -7,3 +7,5 @@
 - `all` now expands only to the architectures declared in the package's
   `mip.yaml`; packages without a channel-side `mip.yaml` no longer dispatch
   every architecture.
+- Build-request issues now close automatically after all build jobs are
+  successfully dispatched.
