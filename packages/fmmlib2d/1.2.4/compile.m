@@ -81,16 +81,20 @@ if ismac
     mexArgs{end+1} = libgomp_a;
 else
     % Linux: the ubi8 build container provides only the shared libgfortran /
-    % libquadmath (no static archives), so link them dynamically and let
+    % libgomp (no static archives), so link them dynamically and let
     % bundle_runtime_libs vendor the .so files next to the MEX with an
     % $ORIGIN RPATH. This is the channel's standard self-containment path
     % on Linux (see packages/fmm2d). Resolve the runtime dir from the shared
     % libgfortran so -L points at the system gcc, not MATLAB's bundled libs.
+    % Only libgfortran/libgomp are required (the FMM code uses no quad
+    % precision, so libquadmath is not linked). The workflow's strip-then-
+    % test gate is the backstop: it deletes the toolchain and reruns the test
+    % against the bundle, so any missing runtime dep fails the build instead
+    % of shipping a MEX that won't load.
     fdir = fileparts(strtrim(run_cmd('gfortran --print-file-name=libgfortran.so')));
     fprintf('gfortran runtime dir: %s\n', fdir);
     mexArgs{end+1} = ['-L' fdir];
     mexArgs{end+1} = '-lgfortran';
-    mexArgs{end+1} = '-lquadmath';
     mexArgs{end+1} = '-lgomp';
 end
 
