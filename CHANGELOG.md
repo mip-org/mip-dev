@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Added the `sedumi` package (1.3.8, upstream tag `v1.3.8` from sqlp/sedumi)
+  for `linux_x86_64`, `macos_arm64`, and `windows_x86_64`. `compile.m`
+  reproduces upstream `install_sedumi`'s 34 MEX targets linking `-lmwblas`,
+  with static `libstdc++`/`libgcc` on Linux. Repo root and `conversion/` are
+  on the default path; `examples/` is gated behind `--with examples` and
+  `doc/` is dropped from the bundle. The MEX sources include f2c-translated
+  K&R code, so the build pins `-std=gnu17` (the C23 default in GCC 15, used by
+  macos_arm64's Homebrew toolchain, reads `()` as `(void)` and rejects the
+  unprototyped calls; harmless on the pinned GCC 8.5 / MinGW 8.1.0 used for
+  Linux/Windows). Ported from mip-staging#10, dropping the unsupported
+  `macos_x86_64` architecture.
 - Windows builds now use the MathWorks-certified MinGW-w64 8.1.0 instead of
   the runner's modern GCC, so `mex` builds the C gateway against a supported
   compiler (no more "unsupported MinGW" warning). A new build-job step
