@@ -411,16 +411,23 @@ jobs:
         if: inputs.architecture == 'windows_x86_64'
         shell: pwsh
         run: |
-          $vsInstaller = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vs_installer.exe"
-          $vsPath = "C:\Program Files\Microsoft Visual Studio\2022\Enterprise"
-          if ((Test-Path $vsInstaller) -and (Test-Path $vsPath)) {
-            & $vsInstaller uninstall --installPath $vsPath --quiet --norestart --force --wait
-          }
-          # No per-package `choco uninstall` loop: chocolatey packages are
-          # dev tools, not runtime libraries a MEX links against, and the
-          # whole C:\ProgramData\chocolatey tree is removed below anyway. The
-          # MinGW runtime DLLs that actually matter for self-containment live
-          # in the directories stripped below.
+          # Rename rather than uninstall/rm: an NTFS directory rename within
+          # the same volume is a metadata-only op (~ms), while the VS
+          # `vs_installer uninstall --wait` and `Remove-Item -Recurse` over
+          # the million-file msys64/Strawberry/VS trees together take ~4 min.
+          # The runner is ephemeral, so leaving the bytes on disk is fine; the
+          # test only needs the toolchain paths to be unfindable by the linker
+          # / loader. Renaming also sidesteps per-file locked-file failures
+          # that stall Remove-Item: NTFS renames a directory without touching
+          # its descendants. (Mirrors the macOS strip step.)
+          #
+          # No `vs_installer uninstall` and no per-package `choco uninstall`:
+          # renaming the VS / chocolatey trees makes cl.exe/link.exe and the
+          # MinGW runtime DLLs unfindable, which is all self-containment needs.
+          # Errors are swallowed here (e.g. a VS background service could pin a
+          # handle and block the VS rename); the "Verify strip" step below is
+          # the hard gate — a silently-failed rename fails the job there rather
+          # than letting a non-self-contained package pass.
           $paths = @(
             "C:\Program Files\Microsoft Visual Studio",
             "C:\Program Files (x86)\Microsoft Visual Studio",
@@ -434,8 +441,32 @@ jobs:
             "C:\Program Files\Git\mingw64"
           )
           foreach ($p in $paths) {
-            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $p
+            if (Test-Path $p) {
+              Move-Item -Force -ErrorAction SilentlyContinue $p "$p.deleted"
+            }
           }
+
+      - name: Verify strip (Windows)
+        if: inputs.architecture == 'windows_x86_64'
+        shell: pwsh
+        run: |
+          # Hard gate on the rename-based strip above. If a rename silently
+          # failed (e.g. a locked VS service handle), a compiler/linker would
+          # still be on PATH and the self-containment test would falsely pass.
+          # Fail loudly here instead. (Mirrors the Linux "Verify strip" step;
+          # macOS lacks one because its renames are not handle-blocked.)
+          $leaked = @()
+          foreach ($exe in 'cl','link','gcc','g++','gfortran','clang','ld') {
+            $c = Get-Command $exe -ErrorAction SilentlyContinue
+            if ($c) { $leaked += "$exe -> $($c.Source)" }
+          }
+          if ($leaked.Count -gt 0) {
+            Write-Output "::error::Strip left toolchain binaries findable:"
+            $leaked | ForEach-Object { Write-Output "  $_" }
+            Write-Output "Strip did not remove expected toolchain; aborting before test."
+            exit 1
+          }
+          Write-Output "Strip OK: no compiler/linker binaries on PATH."
 
       - name: Test bundled package
         # On non-macOS arches, run normally — any matlab error fails the job.
