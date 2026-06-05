@@ -14,6 +14,13 @@ function bundle_runtime_libs(mexFile)
 % guaranteed by the OS and libraries MATLAB resolves itself.
 %
 % No-op on Windows.
+%
+% Bundling is deliberately NON-recursive: it scans only the MEX's own NEEDED
+% entries, not the NEEDED entries of the libs it copies. This is intentional,
+% not a bug — a bundled lib's transitive deps (e.g. libgfortran -> libquadmath,
+% libz) are expected to be provided at runtime by the OS or by MATLAB. See
+% notes/MEX-RUNTIME-LIBS.md for the full rationale and for how to add recursion
+% safely if a genuinely third-party transitive dep ever appears.
 
 if ~exist(mexFile, 'file')
     error('mip:bundleRuntimeLibs:notFound', ...
