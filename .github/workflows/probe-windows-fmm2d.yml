@@ -63,7 +63,7 @@ jobs:
       # ---- Link the MEX with MATLAB + MinGW ----
       - name: Set up MATLAB
         if: inputs.stage == 'mex' || inputs.stage == 'mextest'
-        uses: matlab-actions/setup-matlab@v2
+        uses: matlab-actions/setup-matlab@v3
         with:
           cache: true
           release: latest
@@ -92,7 +92,7 @@ jobs:
         if: inputs.stage == 'mex' || inputs.stage == 'mextest'
         env:
           MW_MINGW64_LOC: C:\mingw64
-        uses: matlab-actions/run-command@v2
+        uses: matlab-actions/run-command@v3
         with:
           command: "probe_mex"
 
@@ -117,13 +117,13 @@ jobs:
 
       - name: Run fmm2d tests without MinGW present
         if: inputs.stage == 'mextest'
-        uses: matlab-actions/run-command@v2
+        uses: matlab-actions/run-command@v3
         with:
           command: "cd('src/matlab'); try; cfmm2dTest; lfmm2dTest; rfmm2dTest; hfmm2dTest; disp('ALL_FMM2D_TESTS_OK'); catch e; disp(getReport(e)); exit(1); end"
 
       - name: Upload mex
         if: always() && (inputs.stage == 'mex' || inputs.stage == 'mextest')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fmm2d-mexw64
           path: src/matlab/fmm2d.mexw64

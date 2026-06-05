@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Upgraded all GitHub Actions to Node 24-native major versions (`checkout@v5`,
+  `setup-python@v6`, `upload-artifact@v7`, `download-artifact@v8`,
+  `upload-pages-artifact@v5`, `deploy-pages@v5`, `matlab-actions/*@v3`) and
+  dropped the `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24` workaround, which only
+  forced the runtime without silencing the Node 20 deprecation warning.
 - Stop bundling `libgfortran.so.5` in Linux MEX bundles: MATLAB ships it and
   resolves it via `LD_LIBRARY_PATH`, so the bundled copy was dead weight.
   `libgomp.so.1` is still bundled (MATLAB does not ship it). See

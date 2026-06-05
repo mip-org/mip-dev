@@ -51,13 +51,6 @@ permissions:
   pages: write
   id-token: write
 
-# GitHub forces JS actions onto Node 24 from 2026-06-16; opt in early so CI
-# already runs on the runtime we'll be living with. Node 24 still requires only
-# glibc 2.28 (RHEL 8 is its Tier-1 and official build platform), so this is safe
-# inside the ubi8 container the Linux build uses. See MATLAB-GLIBC.md.
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
-
 jobs:
   setup:
     name: setup (${{ inputs.architecture }})
@@ -104,10 +97,10 @@ jobs:
         run: dnf install -y git
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout mip
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: mip-org/mip
           path: mip
@@ -165,7 +158,7 @@ jobs:
         # against a newer glibc (needs >= 2.34) and won't run on 2.28. The Linux
         # toolchain step installs the container's native python3 instead.
         if: inputs.architecture != 'linux_x86_64'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -206,7 +199,7 @@ jobs:
 
       - name: Set up MATLAB
         if: steps.prepared_check.outputs.has_prepared == 'true'
-        uses: matlab-actions/setup-matlab@v2
+        uses: matlab-actions/setup-matlab@v3
         with:
           cache: true
           # R2022a pins the libstdc++/libgfortran ABI axis (MATLAB-GCC.md). The
@@ -223,7 +216,7 @@ jobs:
 
       - name: Bundle package
         if: steps.prepared_check.outputs.has_prepared == 'true'
-        uses: matlab-actions/run-command@v2
+        uses: matlab-actions/run-command@v3
         env:
           BUILD_ARCHITECTURE: ${{ inputs.architecture }}
         with:
@@ -277,7 +270,7 @@ jobs:
 
       - name: Upload bundled artifact
         if: steps.bundle_check.outputs.has_bundle == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bundled-${{ inputs.architecture }}
           path: build/bundled/
@@ -290,10 +283,10 @@ jobs:
     runs-on: ${{ needs.setup.outputs.runner }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout mip
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: mip-org/mip
           path: mip
@@ -309,13 +302,13 @@ jobs:
           echo "MIP_ROOT=$root" >> "$GITHUB_ENV"
 
       - name: Download bundled artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bundled-${{ inputs.architecture }}
           path: build/bundled
 
       - name: Set up MATLAB
-        uses: matlab-actions/setup-matlab@v2
+        uses: matlab-actions/setup-matlab@v3
         with:
           cache: true
           # Mirror the build job's release choice (R2022a / R2023b). This job
@@ -447,7 +440,7 @@ jobs:
       - name: Test bundled package
         # On non-macOS arches, run normally — any matlab error fails the job.
         if: inputs.architecture != 'macos_arm64'
-        uses: matlab-actions/run-command@v2
+        uses: matlab-actions/run-command@v3
         with:
           command: "addpath('mip'); addpath('scripts'); test_one"
 
@@ -462,7 +455,7 @@ jobs:
         # matlab return code; the next step is the real gate.
         if: inputs.architecture == 'macos_arm64'
         continue-on-error: true
-        uses: matlab-actions/run-command@v2
+        uses: matlab-actions/run-command@v3
         with:
           command: "addpath('mip'); addpath('scripts'); try; test_one; fid = fopen('.tests_passed', 'w'); fclose(fid); catch err; disp(getReport(err)); exit(1); end"
 
@@ -478,7 +471,7 @@ jobs:
           fi
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -520,10 +513,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
@@ -540,10 +533,10 @@ jobs:
         run: python scripts/assemble_index.py
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: build/gh-pages
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
