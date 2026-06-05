@@ -60,11 +60,6 @@ targets = { ...
 % "unspecified arguments" meaning while the C99 features the hand-written
 % kernels use stay available.
 flags = {'-O', '-largeArrayDims', 'CFLAGS=$CFLAGS -std=gnu17'};
-if isunix && ~ismac
-    % Statically link libstdc++/libgcc so the MEX files load on end-user
-    % machines without pulling in the builder's runtime.
-    flags{end+1} = 'LDFLAGS=$LDFLAGS -static-libstdc++ -static-libgcc';
-end
 libs = {'-lmwblas'};
 
 olddir = cd(srcRoot);
