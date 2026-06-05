@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Documented the build framework: `scripts/README.md` maps every script
+  (trigger layer, per-build pipeline, MATLAB helpers), the `mip.*` dependency
+  surface, and the build-dir/side-file conventions, and classifies each script
+  as channel-specific or centralizable engine. `notes/SCRIPTS-CENTRALIZATION.md`
+  records the channel ↔ engine split, the CLI/`mip.*` interface contracts that
+  keep the eventual lift-out cheap, a recommendation against copying
+  `mip.compile`/`mip.build` into this repo for now, and a staged path toward
+  centralizing the engine. Groundwork for issue #13; no behaviour change.
 - Windows builds now use the MathWorks-certified MinGW-w64 8.1.0 instead of
   the runner's modern GCC, so `mex` builds the C gateway against a supported
   compiler (no more "unsupported MinGW" warning). A new build-job step
