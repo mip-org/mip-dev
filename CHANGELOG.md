@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed `push-build.yml` failing with `fatal: bad object <BEFORE>` on any push
+  carrying more than one new commit: the changed-files diff needs the push's
+  BEFORE commit, but `fetch-depth: 2` only reached AFTER's immediate parent.
+  Checkout now uses `fetch-depth: 0` (full history).
 - Windows strip step now renames toolchain directories (`Move-Item` to
   `*.deleted`) instead of running the slow VS uninstaller and
   `Remove-Item -Recurse` over million-file trees. An NTFS same-volume rename is

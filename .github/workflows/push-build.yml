@@ -28,7 +28,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
-          fetch-depth: 2
+          # Full history: the "Determine changed files" step diffs the push's
+          # BEFORE..AFTER, and BEFORE can be many commits back when a push
+          # carries more than one new commit. A shallow clone (e.g.
+          # fetch-depth: 2) only reaches AFTER's immediate parent, so any
+          # multi-commit push fails with `fatal: bad object <BEFORE>`.
+          fetch-depth: 0
 
       - name: Determine changed files
         env:
