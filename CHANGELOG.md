@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+- `macos_arm64` mexopts now pin the deployment target to macOS 11.0
+  (`-mmacosx-version-min=11.0` in `gcc_static.xml` and `g++_static.xml`).
+  Previously no minimum was set, so each MEX inherited the *build runner's*
+  macOS version as its minimum-load version (e.g. `minos 15.0` on the macos-15
+  runner), refusing to load on older end-user Macs. 11.0 is the oldest
+  Apple-Silicon macOS; the MEX then load on any Mac where MATLAB itself runs.
+  Existing macOS packages keep their baked-in minimum until rebuilt.
+- Added `clang.xml` and `clang++.xml` mexopts for `macos_arm64` — Apple Clang
+  (Xcode) + libc++, deployment target 11.0. A clang alternative to the
+  Homebrew-gcc `gcc_static.xml`/`g++_static.xml` for C++ packages where clang is
+  the native toolchain (CGAL/libigl/embree) or Objective-C++ sources are
+  involved; the channel default remains gcc. Flags are matched to the gcc
+  mexopts (`-O3`, `-ffp-contract=off`, `-fwrapv`, frame pointers, …), except the
+  legitimately compiler-specific ones (`-isysroot`/`-syslibroot`, libc++ vs
+  static `libstdc++`). Produced MEX depend only on OS-provided
+  `libc++`/`libSystem`, so end users need neither Xcode nor Command Line Tools.
 - Added the `sedumi` package (1.3.8, upstream tag `v1.3.8` from sqlp/sedumi)
   for `linux_x86_64`, `macos_arm64`, and `windows_x86_64`. `compile.m`
   reproduces upstream `install_sedumi`'s 34 MEX targets linking `-lmwblas`,
