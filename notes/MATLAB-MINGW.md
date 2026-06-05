@@ -43,9 +43,18 @@ the oldest MATLAB that certifies 8.1.0.
 
 Integration is just the documented self-installed-MinGW hook — set the
 `MW_MINGW64_LOC` environment variable to the MinGW root. `mingw64.xml`
-(shipped in `matlabroot\bin\win64\mexopts`) reads it at mex-setup time.
-**No support-package install and no XML editing.** Caveat from the MathWorks
-docs: the install path must contain no spaces (we use `C:\mingw810`).
+(shipped in `matlabroot\bin\win64\mexopts`) reads it. **No support-package
+install and no XML editing.** Caveat from the MathWorks docs: the install
+path must contain no spaces (we use `C:\mingw810`).
+
+This is centralized in `scripts/setup_mex_compilers.m` (called by
+`bundle_one` before any package compile script), mirroring the
+`gcc_static.xml` setup on Linux/macOS: on `windows_x86_64` it reads
+`MW_MINGW64_LOC` (falling back to `C:\mingw64` for local builds), puts the
+MinGW `bin` first on `PATH`, and selects it as the session MEX compiler via
+`mex -setup:mingw64.xml C`. Per-package `compile_windows.m` scripts then
+just call `gfortran`/`mingw32-make` and an unadorned `mex()` — they no
+longer set `MW_MINGW64_LOC`/`PATH` or pass `-f mingw64.xml`.
 
 Toolchain variant: `x86_64-8.1.0-release-posix-seh-rt_v6-rev0` — POSIX
 threads, SEH exceptions, rt_v6 — the variant the MathWorks support package
@@ -62,13 +71,13 @@ per-arch `release:` choices in `build-package.yml`), R2023a is the oldest
 release that certifies 8.1.0, so it is the Windows floor. R2022b and older
 certify only 6.3.
 
-## `-fallow-argument-mismatch`
+## No `-fallow-argument-mismatch`
 
-`compile_windows.m` adds `-fallow-argument-mismatch` only when the active
-gfortran is >= 10. The flag exists only on GCC >= 10, where legacy
-rank/type argument mismatches became hard errors; it downgrades them back
-to warnings. On the certified 8.1.0 (and on the Linux build's GCC 8.5,
-which omits it in `compile.m`) the mismatches are warnings already, so the
-flag is neither needed nor recognized. The version check keeps the script
-working on both the certified 8.1.0 (CI) and a modern stock MinGW (local
-dev) without edits.
+The Windows `compile_windows.m` scripts do **not** pass
+`-fallow-argument-mismatch`. That flag exists only on gfortran >= 10, where
+legacy rank/type argument mismatches became hard errors; it downgrades them
+back to warnings. The certified MinGW is gfortran 8, which predates GCC 10,
+so the mismatches are warnings already (silenced by `-w`) and the flag is
+neither needed nor recognized. This matches `compile.m`, which omits it for
+the Linux GCC 8.5 build. (Consequence: building locally with a modern stock
+MinGW >= 10 would fail on those mismatches — use the certified 8.1.0.)
