@@ -452,13 +452,40 @@ jobs:
         run: |
           # Hard gate on the rename-based strip above. If a rename silently
           # failed (e.g. a locked VS service handle), a compiler/linker would
-          # still be on PATH and the self-containment test would falsely pass.
-          # Fail loudly here instead. (Mirrors the Linux "Verify strip" step;
-          # macOS lacks one because its renames are not handle-blocked.)
+          # still be findable under one of the stripped roots and the
+          # self-containment test would falsely pass. Fail loudly here.
+          # (Mirrors the Linux "Verify strip" step; macOS lacks one because
+          # its renames are not handle-blocked.)
+          #
+          # Filter found binaries by resolved path under a stripped root, not
+          # by bare name: names like `link` collide with benign tools (Git for
+          # Windows ships GNU coreutils `link.exe` in C:\Program Files\Git\
+          # usr\bin, unrelated to the MSVC linker). Only a sentinel resolving
+          # *inside* a dir we renamed means the strip actually failed.
+          $strippedRoots = @(
+            "C:\Program Files\Microsoft Visual Studio",
+            "C:\Program Files (x86)\Microsoft Visual Studio",
+            "C:\Program Files (x86)\Windows Kits",
+            "C:\Program Files\LLVM",
+            "C:\Strawberry",
+            "C:\msys64",
+            "C:\mingw64",
+            "C:\Program Files\CMake",
+            "C:\Program Files\Git\mingw64"
+          )
           $leaked = @()
           foreach ($exe in 'cl','link','gcc','g++','gfortran','clang','ld') {
-            $c = Get-Command $exe -ErrorAction SilentlyContinue
-            if ($c) { $leaked += "$exe -> $($c.Source)" }
+            foreach ($c in (Get-Command $exe -All -ErrorAction SilentlyContinue)) {
+              $src = $c.Source
+              if (-not $src) { continue }
+              foreach ($root in $strippedRoots) {
+                # Trailing separator so "C:\msys64.deleted\..." (the renamed
+                # tree) doesn't match the "C:\msys64" root.
+                if ($src.StartsWith($root + "\", [System.StringComparison]::OrdinalIgnoreCase)) {
+                  $leaked += "$exe -> $src"
+                }
+              }
+            }
           }
           if ($leaked.Count -gt 0) {
             Write-Output "::error::Strip left toolchain binaries findable:"
@@ -466,7 +493,7 @@ jobs:
             Write-Output "Strip did not remove expected toolchain; aborting before test."
             exit 1
           }
-          Write-Output "Strip OK: no compiler/linker binaries on PATH."
+          Write-Output "Strip OK: no compiler/linker binaries under stripped roots."
 
       - name: Test bundled package
         # On non-macOS arches, run normally — any matlab error fails the job.

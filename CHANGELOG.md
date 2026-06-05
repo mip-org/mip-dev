@@ -12,8 +12,10 @@
   metadata-only, cutting the step from ~4 min to seconds. Mirrors the macOS
   strip step; the runner is ephemeral so leaving bytes on disk is fine. Added a
   "Verify strip (Windows)" gate (mirrors Linux) that fails the job if a
-  compiler/linker is still on `PATH`, so a silently-failed rename can't let a
-  non-self-contained package pass.
+  compiler/linker still resolves under a stripped root, so a silently-failed
+  rename can't let a non-self-contained package pass. The gate matches on
+  resolved path (not bare name) so benign collisions — e.g. Git for Windows'
+  GNU coreutils `link.exe` — don't trip it.
 - Upgraded all GitHub Actions to Node 24-native major versions (`checkout@v5`,
   `setup-python@v6`, `upload-artifact@v7`, `download-artifact@v8`,
   `upload-pages-artifact@v5`, `deploy-pages@v5`, `matlab-actions/*@v3`) and
