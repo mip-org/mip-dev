@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- `scripts/setup_mex_compilers.m` now takes an optional compiler name
+  (`setup_mex_compilers(arch, 'clang')`) in addition to the architecture, and
+  exports `CMAKE_C_COMPILER`/`CMAKE_CXX_COMPILER` (alongside `CC`/`CXX`) so a
+  package's CMake builds use the same compiler as MEX. Defaults to `gcc`
+  (Windows still uses MinGW), so existing packages are unaffected. Also dropped
+  the Objective-C-only `-fobjc-arc` from `clang++.xml` (it warned on every C++
+  source and isn't needed for the one Objective-C++ file that motivated it).
 - `macos_arm64` mexopts now pin the deployment target to macOS 11.0
   (`-mmacosx-version-min=11.0` in `gcc_static.xml` and `g++_static.xml`).
   Previously no minimum was set, so each MEX inherited the *build runner's*
