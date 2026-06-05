@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Stop bundling `libgfortran.so.5` in Linux MEX bundles: MATLAB ships it and
+  resolves it via `LD_LIBRARY_PATH`, so the bundled copy was dead weight.
+  `libgomp.so.1` is still bundled (MATLAB does not ship it). See
+  `notes/MEX-RUNTIME-LIBS.md`.
 - Added `fmmlib2d` 1.2.4 (Greengard & Gimbutas' Laplace/Helmholtz FMM in
   R^2), built with OpenMP for `linux_x86_64`, `macos_arm64`, and
   `windows_x86_64`.

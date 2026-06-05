@@ -30,31 +30,45 @@ three tiers:
 | Tier | Examples | Who provides it at runtime | Do we bundle it? |
 |---|---|---|---|
 | **OS-guaranteed** | `libc.so.6`, `libm.so.6`, `libpthread.so.0`, `libdl.so.2`, `ld-linux-x86-64.so.2` | the end-user's OS | No — in `linux_skip_set` |
-| **MATLAB-provided** | `libgfortran.so.5`, `libquadmath.so.0`, `libgomp.so.1`, `libstdc++.so.6`, `libgcc_s.so.1`, `libz.so.1` | MATLAB's `sys/os/glnxa64` (on `LD_LIBRARY_PATH`) | No — MATLAB resolves it |
-| **Third-party** | anything else a package genuinely depends on | nothing, unless we ship it | **Yes** — this is what bundling is for |
+| **MATLAB-provided** | `libgfortran.so.5`, `libstdc++.so.6`, `libgcc_s.so.1`, `libquadmath.so.0`, `libz.so.1` | MATLAB's `sys/os/glnxa64` (on `LD_LIBRARY_PATH`) | No — MATLAB resolves it |
+| **Must-bundle** | `libgomp.so.1` (MATLAB does **not** ship it), plus any genuinely third-party `.so` | nothing, unless we ship it | **Yes** — this is what bundling is for |
 
-The skip-set encodes the OS-guaranteed tier explicitly. The MATLAB-provided
-tier is handled implicitly: those libs are `NEEDED` by the libs we copy
-(`libgfortran` → `libquadmath`/`libz`), not by the MEX directly, so the
-non-recursive scan never reaches them.
+Two different mechanisms keep MATLAB-provided libs out of the bundle:
+
+- Libs that are **direct** `NEEDED`s of the MEX (`libgfortran.so.5`,
+  `libstdc++.so.6`, `libgcc_s.so.1`) are listed explicitly in `linux_skip_set`.
+- Libs that are only **transitive** (`libquadmath.so.0`, `libz.so.1` —
+  `NEEDED` by `libgfortran`, not by the MEX) are never reached, because the
+  scan is non-recursive.
+
+The critical distinction is `libgomp`: Linux MATLAB ships `libgfortran` but
+**not** `libgomp`, so libgomp is the one runtime lib we genuinely must bundle
+for OpenMP packages. (Verified directly against the Linux MATLAB install.)
 
 ## Why we can lean on MATLAB for the transitive deps
 
 The package only ever runs inside MATLAB, and MATLAB ships its own
-`libgfortran`, `libquadmath`, `libgomp`, `libstdc++`, `libgcc_s`, `libz`, … in
-`$MATLABROOT/sys/os/glnxa64/`, which it places on `LD_LIBRARY_PATH`. The build
-toolchain is pinned (`ubi8` GCC 8.5 / R2022a) precisely so the compiled code's
-`libgfortran`/`libstdc++` symbol-version requirements stay **within** what those
-MATLAB copies provide — see `MATLAB-GCC.md` and the "pins the … ABI axis"
-comment in `build-package.yml`.
+`libgfortran`, `libquadmath`, `libstdc++`, `libgcc_s`, `libz`, … in
+`$MATLABROOT/sys/os/glnxa64/`, which it places on `LD_LIBRARY_PATH`. (It does
+**not** ship `libgomp` — see below.) The build toolchain is pinned (`ubi8`
+GCC 8.5 / R2022a) precisely so the compiled code's `libgfortran`/`libstdc++`
+symbol-version requirements stay **within** what those MATLAB copies provide —
+see `MATLAB-GCC.md` and the "pins the … ABI axis" comment in `build-package.yml`.
 
-A subtlety worth knowing: the dynamic loader searches `LD_LIBRARY_PATH`
-**before** a binary's own `$ORIGIN` RPATH (RUNPATH). Since MATLAB's library
-directory is on `LD_LIBRARY_PATH`, **MATLAB's `libgfortran` is in fact the
-likely runtime provider**, and the copy we bundle alongside the MEX is a
-fallback for load contexts that do not inherit MATLAB's library path. Either
-way, `libgfortran`'s own transitive deps (`libquadmath`, `libz`) resolve against
-MATLAB, not against our bundle — which is why not shipping them is correct.
+A subtlety that makes skipping `libgfortran` not just safe but *necessary*: the
+dynamic loader searches `LD_LIBRARY_PATH` **before** a binary's own `$ORIGIN`
+RPATH (RUNPATH). MATLAB's library directory is on `LD_LIBRARY_PATH`, so MATLAB's
+`libgfortran` is loaded regardless of what we bundle — a bundled copy would be
+**shadowed**, never used, and could not even serve as a newer-version fallback
+(MATLAB's would still win and a too-old MATLAB would fail anyway). So we don't
+ship one; we list it in `linux_skip_set` and let MATLAB resolve it, along with
+its own transitive deps (`libquadmath`, `libz`).
+
+`libgomp` is the exception that proves the rule. Linux MATLAB does **not** ship
+it, so it is not on MATLAB's `LD_LIBRARY_PATH`; with the system copy stripped at
+test time, the only copy left is the one we bundle, reached via the MEX's
+`$ORIGIN` RPATH. That is why `libgomp.so.1` is deliberately **absent** from
+`linux_skip_set`.
 
 ## The strip-then-test gate is the proof (and its scope)
 
@@ -71,20 +85,30 @@ libs, and it is not meant to.
 
 ## Worked example: fmmlib2d 1.2.4
 
-`objdump -p` on the shipped binaries (`linux_x86_64`):
+The MEX's dependency graph (`objdump -p`, `linux_x86_64`):
 
 ```
-fmm2d.mexa64       RUNPATH $ORIGIN   NEEDED libgfortran.so.5, libgomp.so.1, libmx.so, libmex.so, libm, libpthread, libc, ld-linux
-libgfortran.so.5   RUNPATH $ORIGIN   NEEDED libquadmath.so.0, libz.so.1, libm, libgcc_s, libc
-libgomp.so.1       RUNPATH $ORIGIN   NEEDED libdl, libpthread, libc
+fmm2d.mexa64       NEEDED libgfortran.so.5, libgomp.so.1, libmx.so, libmex.so, libm, libpthread, libc, ld-linux
+libgfortran.so.5   NEEDED libquadmath.so.0, libz.so.1, libm, libgcc_s, libc
+libgomp.so.1       NEEDED libdl, libpthread, libc
 ```
 
-Bundling copied only `libgfortran.so.5` and `libgomp.so.1` (the MEX's two
-non-system/non-MATLAB direct `NEEDED`s). `libquadmath.so.0` and `libz.so.1` —
-transitive `NEEDED`s of `libgfortran` — were **not** bundled. The post-strip
-test (`libquadmath0` purged from the host) still passed at ~1e-16 relative
-error, because it ran inside MATLAB, which supplied them. This is the
-non-recursive design working exactly as intended.
+Classification of the MEX's two non-system direct `NEEDED`s:
+
+- `libgfortran.so.5` → **skipped** (`linux_skip_set`); MATLAB ships it and
+  resolves it via `LD_LIBRARY_PATH`, dragging in its own transitive deps
+  (`libquadmath.so.0`, `libz.so.1`) too.
+- `libgomp.so.1` → **bundled**; MATLAB does not ship it, so it is copied next to
+  the MEX with an `$ORIGIN` RPATH.
+
+So the bundle ships exactly one runtime lib: `libgomp.so.1`. The post-strip test
+(system `libgfortran`/`libgomp`/`libquadmath` all purged from the host) passes at
+~1e-16 relative error because it runs inside MATLAB: `libgfortran` and its
+transitive deps come from MATLAB, and `libgomp` comes from the bundle.
+
+> Historical note: earlier builds also bundled `libgfortran.so.5`. That copy was
+> dead weight — shadowed at runtime by MATLAB's via `LD_LIBRARY_PATH` precedence
+> — and was dropped by adding `libgfortran.so.5` to `linux_skip_set`.
 
 ## When recursion *would* be needed, and how to add it safely
 
