@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Windows fmm2d build now uses the MathWorks-certified MinGW-w64 8.1.0
+  instead of the runner's modern GCC: a new build-job step installs the
+  certified toolchain and exports `MW_MINGW64_LOC`, so `mex` builds the C
+  gateway against a supported compiler (no more "unsupported MinGW" warning).
+  `compile_windows.m` reads `MW_MINGW64_LOC` (falling back to `C:\mingw64`)
+  and only passes `-fallow-argument-mismatch` on gfortran >= 10. With the
+  modern-GCC blocker gone, the Windows MATLAB floor drops from R2023b to
+  R2023a (the oldest release certifying 8.1.0) for wider forward
+  compatibility. See `notes/MATLAB-MINGW.md`.
 - Fixed `push-build.yml` failing with `fatal: bad object <BEFORE>` on any push
   carrying more than one new commit: the changed-files diff needs the push's
   BEFORE commit, but `fetch-depth: 2` only reached AFTER's immediate parent.

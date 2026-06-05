@@ -153,6 +153,40 @@ jobs:
           ln -sf /opt/homebrew/bin/gfortran-15 /opt/homebrew/bin/gfortran
           gfortran --version
 
+      - name: Windows toolchain (MathWorks-certified MinGW-w64 8.1.0)
+        if: inputs.architecture == 'windows_x86_64'
+        shell: pwsh
+        run: |
+          # The runner ships only a modern GCC (15.x). MATLAB's mingw64.xml
+          # accepts it but flags it "unsupported", and it's why the Windows
+          # build was pinned to R2023b (older MATLAB mex configs reject modern
+          # GCC outright). Install the MinGW that R2023b actually certifies —
+          # 8.1.0, posix threads + SEH exceptions, rt_v6, the exact variant the
+          # MathWorks support package uses — so mex builds the C gateway against
+          # a supported compiler and the warning goes away. We just drop the
+          # toolchain on disk and export MW_MINGW64_LOC (the documented hook
+          # mingw64.xml reads); no support-package install or XML editing. The
+          # install path has no spaces, per the MathWorks requirement.
+          # See notes/MATLAB-MINGW.md.
+          $url = 'https://downloads.sourceforge.net/project/mingw-w64/Toolchains%20targetting%20Win64/Personal%20Builds/mingw-builds/8.1.0/threads-posix/seh/x86_64-8.1.0-release-posix-seh-rt_v6-rev0.7z'
+          $arc = "$env:RUNNER_TEMP\mingw810.7z"
+          curl.exe -L --retry 5 --retry-all-errors --fail -o "$arc" "$url"
+          # The archive's top-level folder is "mingw64": extracting under
+          # C:\mingw810 yields C:\mingw810\mingw64.
+          7z x "$arc" "-oC:\mingw810" -y > $null
+          $root = "C:\mingw810\mingw64"
+          if (-not (Test-Path "$root\bin\gfortran.exe")) {
+            Write-Error "MinGW 8.1.0 extract failed: $root\bin\gfortran.exe missing"
+            exit 1
+          }
+          & "$root\bin\gcc.exe" --version
+          & "$root\bin\gfortran.exe" --version
+          # Export for the Bundle step's MATLAB process. GITHUB_PATH prepends,
+          # so 8.1.0 shadows the runner's C:\mingw64 for direct gfortran/
+          # mingw32-make calls too.
+          "MW_MINGW64_LOC=$root" >> $env:GITHUB_ENV
+          "$root\bin" >> $env:GITHUB_PATH
+
       - name: Set up Python
         # Skipped in the ubi8 container: setup-python's prebuilt CPython is built
         # against a newer glibc (needs >= 2.34) and won't run on 2.28. The Linux
@@ -204,11 +238,16 @@ jobs:
           cache: true
           # R2022a pins the libstdc++/libgfortran ABI axis (MATLAB-GCC.md). The
           # glibc axis is the ubi8 container's job (MATLAB-GLIBC.md), NOT the
-          # MATLAB version. R2022a lacks native support for some arches: on arm64
-          # macos it links MEX against x86_64 libmx ("symbol(s) not found for
-          # arm64"), and on windows it predates the MinGW64 mex config that
-          # recognizes modern GCC. Use R2023b there; keep R2022a elsewhere.
-          release: ${{ (inputs.architecture == 'macos_arm64' || inputs.architecture == 'windows_x86_64') && 'R2023b' || 'R2022a' }}
+          # MATLAB version. Per-arch overrides, each the OLDEST release that
+          # works (oldest MEX -> widest forward compatibility):
+          #   - macos_arm64: R2023b, the oldest Apple-Silicon-native MATLAB
+          #     (R2022a links arm64 MEX against x86_64 libmx, "symbol(s) not
+          #     found for arm64").
+          #   - windows_x86_64: R2023a, the oldest release that certifies the
+          #     MinGW we install (8.1.0; see notes/MATLAB-MINGW.md). R2022a's
+          #     mex config predates 8.1.0 and rejects modern GCC outright.
+          #   - everything else: R2022a.
+          release: ${{ inputs.architecture == 'macos_arm64' && 'R2023b' || inputs.architecture == 'windows_x86_64' && 'R2023a' || 'R2022a' }}
           # The matlab-deps:ubi8 image already carries MATLAB's system libs, and
           # it's RHEL — setup-matlab's apt-based dependency install can't run
           # there. Skip it inside the container; let it run normally elsewhere.
@@ -311,11 +350,12 @@ jobs:
         uses: matlab-actions/setup-matlab@v3
         with:
           cache: true
-          # Mirror the build job's release choice (R2022a / R2023b). This job
-          # runs on the bare runner (no container): it only loads and tests the
-          # already-built .mhl, so glibc portability isn't a concern here — the
-          # 2.28-floored MEX loads fine on the newer runner (build-low/run-high).
-          release: ${{ (inputs.architecture == 'macos_arm64' || inputs.architecture == 'windows_x86_64') && 'R2023b' || 'R2022a' }}
+          # Mirror the build job's per-arch release choice (R2022a / R2023a /
+          # R2023b). This job runs on the bare runner (no container): it only
+          # loads and tests the already-built .mhl, so glibc portability isn't a
+          # concern here — the 2.28-floored MEX loads fine on the newer runner
+          # (build-low/run-high).
+          release: ${{ inputs.architecture == 'macos_arm64' && 'R2023b' || inputs.architecture == 'windows_x86_64' && 'R2023a' || 'R2022a' }}
 
       - name: Strip build environment (Linux)
         if: inputs.architecture == 'linux_x86_64' || inputs.architecture == 'any'
