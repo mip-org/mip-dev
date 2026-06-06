@@ -134,9 +134,12 @@ foreach(t embree sys math simd tasking lexers)
     string(APPEND _m "L embree $<TARGET_FILE:${t}>\n")
   endif()
 endforeach()
-# CGAL is header-only; its link deps are static gmp + mpfr.
-string(APPEND _m "L cgal ${GMP_STATIC}\n")
+# CGAL is header-only; its link deps are static mpfr + gmp. Order matters:
+# mpfr depends on gmp, and GNU ld is single-pass over archives, so mpfr must
+# precede gmp (gmp last) or mpfr's gmp references go unresolved ("undefined
+# reference to __gmp*"). macOS's linker is multi-pass and tolerates either order.
 string(APPEND _m "L cgal ${MPFR_STATIC}\n")
+string(APPEND _m "L cgal ${GMP_STATIC}\n")
 # El Topo static lib (eltopo3d's target is aliased to libeltopo).
 string(APPEND _m "L eltopo $<TARGET_FILE:libeltopo>\n")
 
