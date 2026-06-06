@@ -17,6 +17,14 @@ set(CMAKE_POLICY_VERSION_MINIMUM 3.5 CACHE STRING "" FORCE)
 # Build every dependency statically so the linked MEX ships nothing extra.
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 
+# These static libs get linked into the shared MEX, so every object must be
+# position-independent. On Linux, gcc builds non-PIC by default and ld rejects a
+# non-PIC .a in a shared object ("relocation R_X86_64_32 ... recompile with
+# -fPIC"); macOS/arm64 is always PIC so this only matters here. Force PIC as the
+# default target property for all deps (libccd, tetgen, triangle, tinyxml2,
+# embree, eltopo, predicates) built below.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 project(gptoolbox_mex_deps CXX C)
 
 # --- System CGAL (headers) -------------------------------------------------
