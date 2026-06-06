@@ -139,6 +139,23 @@ jobs:
                          python39 python39-pip libatomic libstdc++-static
           dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
           dnf install -y patchelf
+          # Rocky 8 is a 1:1 RHEL 8 rebuild whose BaseOS/AppStream/PowerTools
+          # repos are open (no subscription) and ABI-identical to this ubi8 base
+          # (same glibc 2.28, gcc 8.5). UBI's AppStream is a subset missing e.g.
+          # boost-devel, and EPEL's CGAL-devel requires that unversioned
+          # boost-devel, so CGAL/Boost packages (e.g. gptoolbox) can't resolve on
+          # UBI alone. Add Rocky's repos to fill the gap; only RHEL8-compatible
+          # leaf packages get pulled (verified: no glibc/base replacement).
+          rpm --import https://download.rockylinux.org/pub/rocky/RPM-GPG-KEY-Rocky-8
+          ROCKY_KEY=https://download.rockylinux.org/pub/rocky/RPM-GPG-KEY-Rocky-8
+          ROCKY_BASE=https://download.rockylinux.org/pub/rocky/8
+          : > /etc/yum.repos.d/rocky.repo
+          for r in BaseOS AppStream PowerTools; do
+            lc=$(echo "$r" | tr 'A-Z' 'a-z')
+            printf '%s\n' "[rocky-$lc]" "name=Rocky8 $r" \
+              "baseurl=$ROCKY_BASE/$r/x86_64/os/" "enabled=1" "gpgcheck=1" \
+              "gpgkey=$ROCKY_KEY" "" >> /etc/yum.repos.d/rocky.repo
+          done
           # The build steps invoke `python`, but RHEL 8 ships only python3.x, and
           # setup-python's prebuilt CPython needs glibc >= 2.34 (won't run here).
           # Point `python` at the container's native (glibc-2.28) python3.9.

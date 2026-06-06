@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Added `linux_x86_64` to the `gptoolbox` package. Same split build as macOS
+  (CMake builds the static dependency libs; `mex()` links each MEX through the
+  channel `gcc_static` mexopts), adapted for the ubi8 / GCC-8.5 container: CGAL,
+  Boost, and OpenBLAS headers come from dnf (the Rocky repos added below;
+  OpenBLAS only satisfies El Topo's configure-time `find_package(BLAS)` and is
+  not linked in), and static `gmp`/`mpfr` are built from source into an
+  ephemeral prefix `compile.m` owns (RHEL ships no `.a`; no `/usr/local`
+  pollution). El Topo links MATLAB's Fortran BLAS (`-lmwlapack -lmwblas`).
+  Everything static keeps the shipped binaries within the glibc-2.28 floor; a
+  `libgomp` leaf is bundled if it appears. The dependency build (incl. embree 4
+  and El Topo under GCC 8.5) was validated on a RHEL 8.10 container.
+- Linux builds now add the Rocky 8 BaseOS/AppStream/PowerTools repos in the
+  `build-package.yml` toolchain step. UBI 8's AppStream is a subset that lacks
+  `boost-devel`, and EPEL's `CGAL-devel` requires that unversioned package, so
+  CGAL/Boost couldn't resolve on UBI alone. Rocky 8 is a 1:1 RHEL 8 rebuild with
+  open repos (same glibc 2.28 / GCC 8.5), so only RHEL8-compatible leaf packages
+  are pulled — verified to not replace glibc/base. `gpgcheck=1` with the Rocky
+  GPG key.
 - Added the `gptoolbox` package (`master`, Alec Jacobson's Geometry Processing
   Toolbox) for `macos_arm64`. Built with Apple Clang: CMake builds the C/C++
   dependency static libs (predicates, tetgen, triangle, libccd, tinyxml2, embree
@@ -9,8 +27,8 @@
   gmp/mpfr; `compile.m` then links each MEX with `mex()` so it goes through the
   channel mexopts. Ships the full feature set — CGAL, Embree, XML, El Topo, and
   the macOS-only impaste — ~59 MEX, all self-contained (only MATLAB + OS
-  libraries). See `packages/gptoolbox/master/BUILD_NOTES.md`. Linux and Windows
-  builds to follow.
+  libraries). See `packages/gptoolbox/master/BUILD_NOTES.md`. Windows build to
+  follow.
 - `scripts/setup_mex_compilers.m` now takes an optional compiler name
   (`setup_mex_compilers(arch, 'clang')`) in addition to the architecture, and
   exports `CMAKE_C_COMPILER`/`CMAKE_CXX_COMPILER` (alongside `CC`/`CXX`) so a

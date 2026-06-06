@@ -36,10 +36,12 @@ depsBuild = tempname;
 mkdir(depsBuild);
 cleanupDeps = onCleanup(@() rmdir_silent(depsBuild)); %#ok<NASGU>
 
-% Where find_package(CGAL) / find_library(gmp,mpfr) look. macOS: Homebrew
-% prefix. (Linux relies on the default /usr; Windows will pass a vcpkg
-% toolchain — handled when those arches are wired up.)
+% Per-arch dependency discovery. macOS: Homebrew prefix for CGAL + static
+% gmp/mpfr. Linux: CGAL/Boost from dnf (/usr), static gmp/mpfr built from
+% source here and passed explicitly. (Windows will pass a vcpkg toolchain —
+% handled when that arch is wired up.)
 prefixArg = '';
+extraInc = {};   % extra -I flags prepended to the MEX include path (Linux gmp/mpfr)
 if ismac
     % Use Apple Clang on macOS (the native toolchain for CGAL/libigl/embree,
     % uniform libc++, and it can compile the Objective-C++ impaste). This
@@ -59,6 +61,30 @@ if ismac
     % this just keeps the CMake-built .a's consistent (no "built for newer
     % macOS" link warnings).
     prefixArg = sprintf(' -DCMAKE_PREFIX_PATH="%s" -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0', brewPrefix);
+elseif isunix
+    % Linux: CGAL/Boost headers come from dnf (mip.yaml setup), but RHEL/EPEL
+    % ship no static gmp/mpfr (.a). Build them from source into an isolated,
+    % ephemeral prefix this script owns (no /usr/local pollution, auto-cleaned)
+    % and pass the .a paths so CMakeLists skips its find_library. CGAL links
+    % these. Built with the same gcc as mex (CC exported by setup_mex_compilers
+    % in bundle_one). LD_LIBRARY_PATH was cleared above so system curl works.
+    gmpmpfr = tempname;
+    mkdir(gmpmpfr);
+    cleanupGmpMpfr = onCleanup(@() rmdir_silent(gmpmpfr)); %#ok<NASGU>
+    % --enable-fat: gmp otherwise bakes the build runner's CPU assembly into the
+    % .a (an -march=native-style hazard → SIGILL on older end-user CPUs). Fat
+    % builds all x86 variants and dispatches at runtime.
+    build_autotools_static('https://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.xz', ...
+        'gmp-6.3.0', {'--enable-static', '--disable-shared', '--with-pic', ...
+        '--enable-fat'}, gmpmpfr);
+    build_autotools_static('https://ftp.gnu.org/gnu/mpfr/mpfr-4.2.1.tar.xz', ...
+        'mpfr-4.2.1', {'--enable-static', '--disable-shared', '--with-pic', ...
+        sprintf('--with-gmp=%s', gmpmpfr)}, gmpmpfr);
+    prefixArg = sprintf(' -DGMP_STATIC="%s/lib/libgmp.a" -DMPFR_STATIC="%s/lib/libmpfr.a"', ...
+        gmpmpfr, gmpmpfr);
+    % Put our gmp.h/mpfr.h first: they must match the .a we just built (CGAL's
+    % dnf deps may also drop older headers in /usr/include).
+    extraInc = {['-I' fullfile(gmpmpfr, 'include')]};
 end
 
 genArg = '';
@@ -112,6 +138,7 @@ for ln = splitlines(string(manifest))'
     end
 end
 incFlags{end+1} = ['-I' mexDir];   % gptoolbox's own mex/ headers
+incFlags = [extraInc, incFlags];   % Linux gmp/mpfr headers first (no-op elsewhere)
 
 % ---- 3. Compile each MEX with mex() -------------------------------------
 % -largeArrayDims (classic API), -std=c++17 (libigl/CGAL), -DMEX (upstream's
@@ -219,5 +246,34 @@ fprintf('=== gptoolbox MEX compilation complete ===\n');
 function rmdir_silent(d)
 if exist(d, 'dir')
     try; rmdir(d, 's'); catch; end
+end
+end
+
+
+function build_autotools_static(url, dirName, cfgArgs, prefix)
+% Download an autotools source tarball and install a static lib into `prefix`.
+% Used on Linux for gmp/mpfr (no static .a in RHEL/EPEL). Builds in a scratch
+% dir that's removed on return; only the installed prefix persists.
+work = tempname;
+mkdir(work);
+cleanupWork = onCleanup(@() rmdir_silent(work)); %#ok<NASGU>
+tarball = fullfile(work, 'src.tar.xz');
+run_or_error(sprintf('curl -fL --retry 5 -o "%s" "%s"', tarball, url), ...
+    ['download ' dirName]);
+run_or_error(sprintf('tar xf "%s" -C "%s"', tarball, work), ['extract ' dirName]);
+src = fullfile(work, dirName);
+run_or_error(sprintf('cd "%s" && ./configure --prefix="%s" %s', ...
+    src, prefix, strjoin(cfgArgs, ' ')), ['configure ' dirName]);
+run_or_error(sprintf('cd "%s" && make -j%d && make install', ...
+    src, feature('numcores')), ['build ' dirName]);
+end
+
+
+function run_or_error(cmd, what)
+fprintf('  [%s]\n', what);
+[st, out] = system(cmd);
+fprintf('%s', out);
+if st ~= 0
+    error('gptoolbox:linuxDeps', '%s failed (exit %d)', what, st);
 end
 end

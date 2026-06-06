@@ -18,9 +18,11 @@ paths:
   - path: wrappers
 
 builds:
-  - architectures: [macos_arm64]
+  - architectures: [macos_arm64, linux_x86_64]
     compile_script: compile.m
     test_script: test_gptoolbox_mex.m
     setup:
       macos:
         - "brew install cmake cgal"
+      linux:
+        - "dnf install -y CGAL-devel boost-devel openblas-devel cmake m4 xz"
