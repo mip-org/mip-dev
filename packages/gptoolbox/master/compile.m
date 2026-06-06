@@ -66,7 +66,10 @@ if ispc
     genArg = ' -G "MinGW Makefiles"';   % placeholder; Windows uses MSVC (TODO)
 end
 
-nproc = maxNumCompThreads;
+% feature('numcores'), not maxNumCompThreads: the latter is MATLAB's
+% computational-thread cap, which the matlab-actions CI session pins to 1, so
+% the cmake build ran -j1. feature('numcores') re-probes the hardware.
+nproc = feature('numcores');
 cfgCmd = sprintf('cmake -S "%s" -B "%s"%s%s -DCMAKE_BUILD_TYPE=Release', ...
     srcRoot, depsBuild, genArg, prefixArg);
 fprintf('Configuring dependency libraries:\n  %s\n', cfgCmd);
