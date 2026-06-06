@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added the `gptoolbox` package (`master`, Alec Jacobson's Geometry Processing
+  Toolbox) for `macos_arm64`. Built with Apple Clang: CMake builds the C/C++
+  dependency static libs (predicates, tetgen, triangle, libccd, tinyxml2, embree
+  with internal tasking, El Topo) and discovers header-only CGAL/Boost + static
+  gmp/mpfr; `compile.m` then links each MEX with `mex()` so it goes through the
+  channel mexopts. Ships the full feature set — CGAL, Embree, XML, El Topo, and
+  the macOS-only impaste — ~59 MEX, all self-contained (only MATLAB + OS
+  libraries). See `packages/gptoolbox/master/BUILD_NOTES.md`. Linux and Windows
+  builds to follow.
 - `scripts/setup_mex_compilers.m` now takes an optional compiler name
   (`setup_mex_compilers(arch, 'clang')`) in addition to the architecture, and
   exports `CMAKE_C_COMPILER`/`CMAKE_CXX_COMPILER` (alongside `CC`/`CXX`) so a

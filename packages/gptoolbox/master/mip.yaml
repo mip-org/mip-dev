@@ -1,0 +1,26 @@
+name: gptoolbox
+description: "Geometry Processing Toolbox — MATLAB functions for mesh processing, discrete differential geometry, and geometric optimization."
+version:
+license: "MIT"
+homepage: "https://github.com/alecjacobson/gptoolbox"
+repository: "https://github.com/alecjacobson/gptoolbox"
+dependencies: []
+
+paths:
+  - path: external
+    recursive: true
+  - path: imageprocessing
+  - path: matrix
+  - path: mesh
+  - path: mex
+  - path: quat
+  - path: utility
+  - path: wrappers
+
+builds:
+  - architectures: [macos_arm64]
+    compile_script: compile.m
+    test_script: test_gptoolbox_mex.m
+    setup:
+      macos:
+        - "brew install cmake cgal"
