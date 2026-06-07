@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Documented the MEX-API compatibility axis in `notes/MATLAB-GCC.md` (with a
+  cross-reference in `notes/MATLAB-GLIBC.md`): a MEX is forward-compatible only
+  on the `libmx`/`libmex` + MEX-file-version axis, so the build MATLAB — not the
+  GCC version — sets the minimum supported release. Corrects the note's earlier
+  "GCC 8 → R2020b+" claim (true only for the libstdc++ axis) and adds a
+  three-axis (glibc / compiler-runtime / MEX-API) summary table.
+
 - Added `linux_x86_64` to the `gptoolbox` package. Same split build as macOS
   (CMake builds the static dependency libs; `mex()` links each MEX through the
   channel `gcc_static` mexopts), adapted for the ubi8 / GCC-8.5 container: CGAL,

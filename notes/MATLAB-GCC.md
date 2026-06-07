@@ -38,7 +38,104 @@ The story for Fortran compilation is better. MATLAB's online documentation corre
 | R2020b | 8.x   | 5.0.0         |
 | R2020a | 6.3.x | 3.0.0         |
 
-The upshot is that if we compile our MEX binaries on Linux using GCC version 8, then they should work out of the box on MATLAB R2020b and newer on Linux.
+The upshot *for this axis* is that compiling our MEX binaries on Linux with GCC 8
+keeps their `libstdc++`/`libgfortran` requirements within what MATLAB R2020b and
+newer ship. **But this is only one of three compatibility axes, and not the one
+that sets the floor** — see the next section.
+
+## The three compatibility axes — and which one sets the floor
+
+A Linux MEX must satisfy **three** independent compatibility axes. The
+lowest-reaching one wins:
+
+| Axis | Libraries / mechanism | Pinned by | Direction |
+|---|---|---|---|
+| **System ABI** | `glibc` (`libc`, `libm`, `ld-linux`) | the **build host's glibc** | backward-compatible — build low, run high (see `MATLAB-GLIBC.md`) |
+| **Compiler runtime ABI** | `libstdc++` (GLIBCXX), `libgfortran` | the **GCC version** you compile with | backward-compatible — old symbols resolve against newer libs (this note) |
+| **MEX API** | `libmx`/`libmex`/`libmat`/`MatlabDataArray` + the MEX-file-version stamp | the **MATLAB release you link `mex` against** | **forward-compatible only** — runs on its build release and *newer*, never older |
+
+The first two axes are backward-compatible: build low, run high. The **MEX-API
+axis is the odd one out — it is forward-compatible only.** `mex` links the MEX
+against the build MATLAB's `libmx`/`libmex` and stamps it with that release's
+MEX-file version via the `c_exportsmexfileversion.map` version-script (it appears
+as `LINKEXPORTVER` in every mexopts file, stock and custom). An older `libmex`
+loading a higher-stamped MEX rejects it outright ("built with a newer version of
+MATLAB"), and any `libmx`/`MatlabDataArray` symbols added in later releases
+simply do not resolve on an older `libmex`.
+
+**Consequence: the real floor is the build MATLAB, not the GCC version.** The
+effective minimum supported release is `max(libstdc++ axis, MEX-API axis)`.
+Building with GCC 8 keeps the libstdc++ axis reachable down to R2020b — but if
+you link `mex` on R2022a, the MEX-API axis walls off everything older, so the
+binary will **not** load on R2020b regardless. The GCC-8 headroom below the build
+MATLAB is unused. To actually support an older release you must *build* on it (the
+GCC-8 pin permits this on the libstdc++ axis), not merely compile with an old GCC.
+
+This also settles what to test. Because the floor is the build MATLAB and CI's
+strip-test already runs there, the build MATLAB's own `libstdc++` is the relevant
+ceiling: any GCC-version regression that overshoots it (e.g. GCC ≥ 11 against
+R2022a's GLIBCXX_3.4.28) fails to load in that test and turns the build red. A
+*second* test on the newest MATLAB would add forward-compatibility assurance for
+the MEX-API axis, but the floor itself is already gated by the build-MATLAB test.
+(This is also why statically linking `libstdc++` is defensive rather than
+required — see `MEX-RUNTIME-LIBS.md`.)
+
+## Runtime workaround: `LD_PRELOAD`
+
+The tables above describe the problem at **build** time — keep the compiled
+`GLIBCXX` requirement within what MATLAB's bundled `libstdc++` provides. The CI
+builds solve this structurally by pinning GCC 8.5 in the `ubi8` container
+(`GLIBCXX 3.4.25`, within every MATLAB ≥ R2020b — see `MATLAB-GLIBC.md`). But on
+a local workstation you often compile with the host's *current* g++ (13, 14, …),
+which emits a newer `GLIBCXX` node than your MATLAB's `libstdc++` contains. The
+load then fails with, e.g.:
+
+```
+Invalid MEX-file '.../foo.mexa64':
+.../sys/os/glnxa64/libstdc++.so.6: version `GLIBCXX_3.4.32' not found
+```
+
+### Why MATLAB's old `libstdc++` wins
+
+MATLAB ships its own `libstdc++.so.6` in `$MATLABROOT/sys/os/glnxa64/` and places
+that directory on `LD_LIBRARY_PATH` before launch. The dynamic loader searches
+`LD_LIBRARY_PATH` **before** a binary's own RPATH/RUNPATH, so MATLAB's copy
+shadows the (newer) system one in `/lib/x86_64-linux-gnu/` — even though the
+system copy has the symbol your MEX needs. (This is the same precedence rule that
+makes `libgfortran` bundling pointless inside MATLAB — see
+`MEX-RUNTIME-LIBS.md`.)
+
+### What `LD_PRELOAD` fixes
+
+```console
+$ LD_PRELOAD=/lib/x86_64-linux-gnu/libstdc++.so.6 \
+    /usr/local/MATLAB/R2025b/bin/matlab
+```
+
+`LD_PRELOAD` maps the named library **first**, ahead of everything on
+`LD_LIBRARY_PATH`. Because `libstdc++.so.6` is *forward* compatible (a newer
+`6.0.x` satisfies every symbol an older one does — see the note at the top of the
+correspondence table), the system copy serves both MATLAB's own needs and your
+MEX's newer `GLIBCXX_3.4.3x` requirement. The missing symbol resolves and the MEX
+loads.
+
+### Caveats and scope
+
+- **Local dev only.** This is an escape hatch for binaries built with a too-new
+  g++ on your own machine. Anything we *ship* must instead be built within the
+  ABI floor (GCC 8.5 / `ubi8`) so end users need no `LD_PRELOAD`.
+- **Forward compat is the load-bearing fact.** Preloading a *newer* libstdc++
+  works; preloading an older one would break MATLAB itself. Only ever preload the
+  system copy when it is newer than MATLAB's.
+- **`libstdc++` only.** This does nothing for the `glibc` axis — `libc.so.6` is
+  resolved before any preload of a higher-level lib helps, and glibc is not
+  forward compatible anyway (see `MATLAB-GLIBC.md`). If the failure names
+  `GLIBC_2.xx` rather than `GLIBCXX_3.4.xx`, `LD_PRELOAD` is the wrong tool.
+- **Find the version a MEX needs:**
+  ```console
+  $ objdump -T foo.mexa64 | grep -o 'GLIBCXX_[0-9.]*' | sort -V -u | tail -1
+  ```
+  Compare against your MATLAB's bundled max in the table above.
 
 ## GCC, GLIBCXX, and libstdc++ correspondence
 
