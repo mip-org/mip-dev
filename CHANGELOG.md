@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Fixed the Linux MEX link failing with undefined `libstdc++` symbols (e.g. `vtable for
+  std::basic_filebuf`, `std::locale::~locale`) pulled from gcc-toolset-10's
+  `libstdc++_nonshared.a`. RHEL's gcc-toolset splits `libstdc++` into the base-system
+  shared `libstdc++.so.6` plus a static `libstdc++_nonshared.a` for the newer symbols;
+  the static half back-references the shared half. The channel's `-Wl,--as-needed`
+  dropped `libstdc++.so.6` (nothing in the Fortran/C objects referenced it directly),
+  so once a `_nonshared.a` member was pulled its references to the base library went
+  unresolved. Guard `-lstdc++` in the `gcc` mexopts with
+  `-Wl,--push-state,--no-as-needed … -Wl,--pop-state` so the base library is always
+  retained as a `NEEDED` entry, while `--as-needed` still trims other libs. (Stock
+  R2022a carries `-lstdc++` but no `--as-needed`, so it never hit this.)
+
 - Fixed the Linux build failing at `mex -setup` (`compiler is not detected`) after the
   gcc-toolset-10 switch. The toolset lives under `/opt/rh`, and prepending it to PATH via
   `$GITHUB_ENV` reaches `run:` steps but not MATLAB's mex compiler detection, which runs
