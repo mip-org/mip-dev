@@ -112,10 +112,6 @@
   "GCC 8 → R2020b+" claim (true only for the libstdc++ axis) and adds a
   three-axis (glibc / compiler-runtime / MEX-API) summary table.
 
-- Renamed the channel's gcc mexopts `gcc_static.xml`/`g++_static.xml` to
-  `gcc.xml`/`g++.xml` (Linux/macOS), updating `setup_mex_compilers.m` and the
-  build notes that reference them.
-
 - Added `linux_x86_64` to the `gptoolbox` package. Same split build as macOS
   (CMake builds the static dependency libs; `mex()` links each MEX through the
   channel `gcc_static` mexopts), adapted for the ubi8 / GCC-8.5 container: CGAL,
