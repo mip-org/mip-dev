@@ -223,8 +223,12 @@ nBuilt = nBuilt + 1;
 % Homebrew-gcc toolchain can't, which is part of why macOS uses clang.
 if ismac
     fprintf('  mex impaste\n');
+    % paste.mm is manual-reference-counting Objective-C++; pass -fno-objc-arc so
+    % it builds regardless of the toolchain's ARC default (the memory model is a
+    % per-.mm property, declared here at the call site rather than in the mexopts).
     mex(common{:}, '-output', 'impaste', ...
         fullfile(mexDir, 'impaste.cpp'), fullfile(mexDir, 'paste.mm'), ...
+        'CXXFLAGS=$CXXFLAGS -fno-objc-arc', ...
         'LDFLAGS=$LDFLAGS -framework Cocoa -framework Foundation');
     nBuilt = nBuilt + 1;
 end

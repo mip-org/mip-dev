@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- gptoolbox (macOS): compile `impaste`'s `paste.mm` with `-fno-objc-arc` so the
+  manual-reference-counting Objective-C++ builds regardless of the toolchain's
+  ARC default (set at the `mex()` call site, since the memory model is a per-`.mm`
+  property).
+
 - Rewrote `scripts/setup_mex_compilers.m` as a single `(architecture, compiler)`
   switch that resolves the mexopts XML pair to apply and the compiler to export,
   followed by one shared tail that runs `mex -setup` and exports
