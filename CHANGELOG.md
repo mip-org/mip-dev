@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Dropped `-fno-omit-frame-pointer` from the macOS `clang`/`clang++` mexopts.
+  These target `-arch arm64`, and Apple's ARM64 ABI mandates the frame-pointer
+  chain — clang keeps it even under `-fomit-frame-pointer` — so the flag is a
+  no-op there; stock macOS clang omits it. (The macOS `gcc`/`g++` mexopts keep
+  it, as it is meaningful for x86_64.)
+
 - Dropped `-pthread` from the macOS `clang`/`clang++` mexopts. On Darwin it adds
   no `-lpthread` (pthreads live in `libSystem`) and only defines the `_REENTRANT`
   macro, which the system headers ignore; stock macOS clang omits it. (Linux
