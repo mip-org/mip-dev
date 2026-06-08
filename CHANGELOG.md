@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Dropped `-pthread` from the macOS `clang`/`clang++` mexopts. On Darwin it adds
+  no `-lpthread` (pthreads live in `libSystem`) and only defines the `_REENTRANT`
+  macro, which the system headers ignore; stock macOS clang omits it. (Linux
+  keeps `-pthread` — it is required there and is in stock.)
+
 - Dropped `-fPIC` from the macOS `clang`/`clang++` mexopts. Darwin compiles
   position-independent code by default for dylibs/bundles, so the flag is a
   no-op there; stock macOS clang omits it for the same reason. (Linux keeps

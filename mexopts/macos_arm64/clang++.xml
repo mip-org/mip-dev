@@ -29,7 +29,7 @@
         CXX="$XCRUN_DIR/xcrun -sdk macosx$SDKVER clang++"
         DEFINES="-DMATLAB_MEX_FILE"
         MACOSX_DEPLOYMENT_TARGET="11.0"
-        CXXFLAGS="-fno-common -arch arm64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -fexceptions -isysroot $ISYSROOT -fwrapv -ffp-contract=off -fno-omit-frame-pointer -pthread -std=c++17 -stdlib=libc++"
+        CXXFLAGS="-fno-common -arch arm64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -fexceptions -isysroot $ISYSROOT -fwrapv -ffp-contract=off -fno-omit-frame-pointer -std=c++17 -stdlib=libc++"
         INCLUDE="-I&quot;$MATLABROOT/extern/include&quot; -I&quot;$MATLABROOT/simulink/include&quot;"
         CXXOPTIMFLAGS="-O3 -DNDEBUG"
         CXXDEBUGFLAGS="-g"
