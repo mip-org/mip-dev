@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Restored stock's C++ MEX API support in the macOS `clang++` mexopts
+  (`LINKEXPORTCPP`/`cppMexFunction.map`, `-lMatlabDataArray`, libc++ via
+  `-stdlib=libc++`) and added `-ld_classic` (as `g++.xml` already does) so the
+  `cppMexFunction.map` export list works on Apple's new linker (`ld-prime`,
+  Xcode 15+), which no longer honors `-U` for undefined export-list symbols.
+  One static XML now builds both classic `mexFunction` and class-based
+  `matlab::mex::Function` MEX. See `notes/MACOS-MEX-CPP-LINKER.md` — including how
+  R2025b/R2026a fixed this differently (a symbol-triggered conditional relink in
+  the `mex` driver) and when to drop `-ld_classic`.
+
 - Dropped `-std=c++17` from the macOS `clang++` mexopts, leaving the C++
   standard unset like the channel's gcc/g++ mexopts (which dropped stock's
   `-std=c++11`). The standard is a per-package property declared at the call
