@@ -78,5 +78,5 @@
             <cmdReturns name="g++ -dumpmachine" />
         </GCC_TARGET>
     </locationFinder>
-    <env INCLUDE="$GCCDIR/lib/gcc/$GCC_TARGET/$VER/include;$GCCDIR/include/c++/$VER;$GCCDIR/include/c++/$VER/$GCC_TARGET;$GCCDIR/include/c++/$VER/backward"/>      
+    <env INCLUDE="$GCCDIR/lib/gcc/$GCC_TARGET/$GCC_VERSION/include;$GCCDIR/include/c++/$GCC_VERSION;$GCCDIR/include/c++/$GCC_VERSION/$GCC_TARGET;$GCCDIR/include/c++/$GCC_VERSION/backward"/>      
 </config>
