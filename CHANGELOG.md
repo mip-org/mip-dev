@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Dropped `-fPIC` from the macOS `clang`/`clang++` mexopts. Darwin compiles
+  position-independent code by default for dylibs/bundles, so the flag is a
+  no-op there; stock macOS clang omits it for the same reason. (Linux keeps
+  `-fPIC` — it is required for ELF shared objects and is already in stock.)
+
 - Reverted the macOS `clang`/`clang++` mexopts from weak-linking the MATLAB
   libraries (`-weak-lmx -weak-lmex -weak-lmat`) back to hard `-lmx -lmex -lmat`,
   matching stock and the channel's own gcc mexopts. The weak link was a vestige
