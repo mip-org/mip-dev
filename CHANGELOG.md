@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Linux `g++` mexopts: guard `-lstdc++` with `-Wl,--push-state,--no-as-needed
+  ... -Wl,--pop-state`, mirroring the existing `gcc` mexopts fix. The
+  `--as-needed` token in `LDFLAGS` is sticky and also governs the `-lstdc++`
+  the `g++` driver appends, so gcc-toolset's base `libstdc++.so.6` was dropped
+  out of its split-lib linker script for C++ MEX too — not just the C path the
+  original fix covered. Surfaced on gptoolbox's `bone_visible`, the first C++
+  MEX in the channel to use `std::filesystem`, which drags `fs_*.o` out of
+  `libstdc++_nonshared.a` and then can't resolve their `operator new` /
+  `__cxa_throw` / `basic_filebuf` references against the dropped shared half.
+  See `notes/LINUX-LIBSTDCXX-ASNEEDED.md`.
+
 - `scripts/package_setup.py` now resolves Git for Windows' `bash` explicitly on
   Windows instead of spawning a bare `bash`. On Windows `CreateProcess` resolves
   a bare `bash` to `C:\Windows\System32\bash.exe` (the WSL launcher) before

@@ -104,8 +104,29 @@ LINKLIBS="… -lm -Wl,--push-state,--no-as-needed -lstdc++ -Wl,--pop-state"
 `libmx`'s `std::string` symbols resolve **dynamically at runtime** and `fs_ops.o` is **never
 extracted at all** — the `.mexa64` stays lean. `--as-needed` still trims other libraries.
 
-Only the **C** (`gcc`) mexopts need this: they carry an explicit `-lstdc++`. The **C++**
-(`g++`) mexopts have no explicit `-lstdc++` (the `g++` driver adds the runtime itself).
+**Both** the C (`gcc`) and C++ (`g++`) mexopts need the guard. The same `LINKLIBS` tail is
+applied to each.
+
+### The C++ (`g++`) path needs it too — and was missed at first
+
+The original fix guarded only the **C** (`gcc`) mexopts, on the reasoning that the **C++**
+(`g++`) mexopts carry no explicit `-lstdc++` (the `g++` driver appends the runtime itself, so
+there was seemingly nothing to guard). That reasoning is wrong. The driver appends its
+`-lstdc++` at the **end** of the link line, and the `-Wl,--as-needed` token in the mexopts'
+`LDFLAGS` is **sticky** — still in effect when that driver-added `-lstdc++` is processed. So the
+base `libstdc++.so.6` inside the split-lib script gets `--as-needed`-dropped by the *identical*
+mechanism, and a C++ MEX that drags the static half out (e.g. by using `std::filesystem`) hits
+the same wall of undefined references.
+
+This surfaced on **gptoolbox's `bone_visible`** — the first C++ MEX in the channel to use
+`std::filesystem` (`recursive_directory_iterator`, pulling `fs_dir.o`/`fs_ops.o` out of
+`libstdc++_nonshared.a`). The MEX before it in the same compile run (`aabb`, `angle_derivatives`)
+linked fine: they never touch `std::filesystem`, so nothing forces the static half out and the
+`--as-needed`-dropped shared half is never missed.
+
+The original repro was a **pure C/Fortran** package (`fmm2d`), which only ever exercises the
+`gcc` link path — so the `gcc`-only guard looked complete. The root cause is identical on both
+paths; gptoolbox was simply the first C++ consumer to reach it.
 
 ### Alternatives considered
 

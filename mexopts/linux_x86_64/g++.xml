@@ -41,7 +41,7 @@
         VERSIONMAP="&quot;$MATLABROOT/extern/lib/$ARCH/c_exportsmexfileversion.map&quot;"
         LINKEXPORT="-Wl,--version-script,$FUNCTIONMAP"
         LINKEXPORTVER="-Wl,--version-script,$VERSIONMAP"
-        LINKLIBS="-L&quot;$MATLABROOT/bin/$ARCH&quot; -L&quot;$MATLABROOT/extern/bin/$ARCH&quot; -lMatlabDataArray -lMatlabEngine -lmx -lmex -lmat -lm"
+        LINKLIBS="-L&quot;$MATLABROOT/bin/$ARCH&quot; -L&quot;$MATLABROOT/extern/bin/$ARCH&quot; -lMatlabDataArray -lMatlabEngine -lmx -lmex -lmat -lm -Wl,--push-state,--no-as-needed -lstdc++ -Wl,--pop-state"
         LDOPTIMFLAGS="-O"
         LDDEBUGFLAGS="-g"
         OBJEXT=".o"
