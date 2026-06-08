@@ -37,7 +37,7 @@
         CXXDEBUGFLAGS="-g"
         LD="$CC"
         LDXX="$CXX"
-        LDFLAGS="-w -ld_classic -nodefaultrpaths -Wl,-twolevel_namespace -Wl,-dead_strip_dylibs -arch $GCC_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -bundle"
+        LDFLAGS="-ld_classic -nodefaultrpaths -Wl,-twolevel_namespace -Wl,-dead_strip_dylibs -arch $GCC_ARCH -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -bundle"
         FUNCTIONMAP="&quot;$MATLABROOT/extern/lib/$ARCH/mexFunction.map&quot;"
         VERSIONMAP="&quot;$MATLABROOT/extern/lib/$ARCH/c_exportsmexfileversion.map&quot;"
         CPPFUNCTIONMAP="&quot;$MATLABROOT/extern/lib/$ARCH/cppMexFunction.map&quot;"

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Removed `-w` from the macOS `g++` mexopts (both arches). It suppressed *all*
+  linker warnings — including the `-mmacosx-version-min` mismatch warning, which
+  catches an object or dependency built for a newer macOS than the 11.0 floor (a
+  MEX that would fail to load on macOS 11), the macOS analogue of the glibc-floor
+  check. The `-ld_classic` deprecation warning now shows too, doubling as a
+  reminder to migrate off it. Consistent with leaving the `clang++` link warnings
+  visible. See `notes/MACOS-MEX-CPP-LINKER.md`.
+
 - Restored stock's C++ MEX API support in the macOS `clang++` mexopts
   (`LINKEXPORTCPP`/`cppMexFunction.map`, `-lMatlabDataArray`, libc++ via
   `-stdlib=libc++`) and added `-ld_classic` (as `g++.xml` already does) so the
