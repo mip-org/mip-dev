@@ -256,6 +256,33 @@ jobs:
             echo "Nothing to bundle (arch mismatch or already published)."
           fi
 
+      - name: Prepare vcpkg binary cache dir (Windows)
+        if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true'
+        shell: bash
+        run: |
+          # vcpkg's files-based binary cache (the default at
+          # %LOCALAPPDATA%\vcpkg\archives) dies with the ephemeral runner. Point
+          # it at a workspace dir so the actions/cache step below can persist it
+          # across runs. vcpkg errors if VCPKG_DEFAULT_BINARY_CACHE points at a
+          # missing dir, so create it; hand vcpkg a Windows path via cygpath.
+          dir="$GITHUB_WORKSPACE/vcpkg-archives"
+          mkdir -p "$dir"
+          echo "VCPKG_DEFAULT_BINARY_CACHE=$(cygpath -w "$dir")" >> "$GITHUB_ENV"
+
+      - name: Cache vcpkg binary packages (Windows)
+        if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true'
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-archives
+          # vcpkg restores each port from inside this dir by its own ABI hash, so
+          # a coarse key is safe — a changed port just rebuilds itself, never the
+          # wrong binary. Bust the key when any package's deps or the vcpkg
+          # triplets change; restore-keys falls back to the latest prior cache so
+          # unchanged ports still hit.
+          key: vcpkg-archives-windows-${{ hashFiles('packages/**/mip.yaml', 'packages/**/vcpkg-triplets/*.cmake') }}
+          restore-keys: |
+            vcpkg-archives-windows-
+
       - name: Run package setup
         if: steps.prepared_check.outputs.has_prepared == 'true'
         shell: bash

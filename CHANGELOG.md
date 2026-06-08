@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): speed up the vcpkg gmp/mpfr install. A release-only
+  overlay triplet (`packages/gptoolbox/master/vcpkg-triplets/`, shadowing the
+  builtin `x64-windows-static-md` with `VCPKG_BUILD_TYPE release`) stops vcpkg
+  building the unused debug variant of each port, ~halving the cold build, and
+  `build-package.yml` now persists vcpkg's binary cache across Windows runs via
+  `actions/cache` over `VCPKG_DEFAULT_BINARY_CACHE` (warm runs restore gmp/mpfr
+  instead of rebuilding). The triplet keeps the builtin's name, so `compile.m`'s
+  `VCPKG_TARGET_TRIPLET` is unchanged; vcpkg still validates each port by ABI
+  hash, so the cache can't serve stale binaries.
+
 - Linux `g++` mexopts: guard `-lstdc++` with `-Wl,--push-state,--no-as-needed
   ... -Wl,--pop-state`, mirroring the existing `gcc` mexopts fix. The
   `--as-needed` token in `LDFLAGS` is sticky and also governs the `-lstdc++`
