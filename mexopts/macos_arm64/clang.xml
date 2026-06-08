@@ -39,7 +39,7 @@
         VERSIONMAP="&quot;$MATLABROOT/extern/lib/$ARCH/c_exportsmexfileversion.map&quot;"
         LINKEXPORT="-Wl,-exported_symbols_list,$FUNCTIONMAP"
         LINKEXPORTVER="-Wl,-exported_symbols_list,$VERSIONMAP"
-        LINKLIBS="-L&quot;$MATLABROOT/bin/$ARCH&quot; -weak-lmx -weak-lmex -weak-lmat -lc++"
+        LINKLIBS="-L&quot;$MATLABROOT/bin/$ARCH&quot; -lmx -lmex -lmat -lc++"
         LDOPTIMFLAGS="-O"
         LDDEBUGFLAGS="-g"
         OBJEXT=".o"

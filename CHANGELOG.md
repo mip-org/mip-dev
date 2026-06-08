@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reverted the macOS `clang`/`clang++` mexopts from weak-linking the MATLAB
+  libraries (`-weak-lmx -weak-lmex -weak-lmat`) back to hard `-lmx -lmex -lmat`,
+  matching stock and the channel's own gcc mexopts. The weak link was a vestige
+  of the old MathWorks Mac template: a MEX only loads inside MATLAB, where
+  `@rpath/libmx.dylib` always resolves, so weak-linking bought nothing and only
+  degraded a missing-symbol error from a clean load failure to a NULL-pointer
+  runtime crash. Verified on R2023b: hard/weak load identically.
+
 - Documented the MEX-API compatibility axis in `notes/MATLAB-GCC.md` (with a
   cross-reference in `notes/MATLAB-GLIBC.md`): a MEX is forward-compatible only
   on the `libmx`/`libmex` + MEX-file-version axis, so the build MATLAB — not the
