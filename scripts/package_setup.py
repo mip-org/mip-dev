@@ -34,6 +34,7 @@ both this Python script and `mip.bundle` in MATLAB.
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 
@@ -74,6 +75,35 @@ def current_os_key():
     if sys.platform == 'win32':
         return 'windows'
     sys.exit(f'package_setup: unsupported platform {sys.platform}')
+
+
+def bash_executable():
+    """Path to a usable bash interpreter.
+
+    The setup scripts are bash (the runner uses `shell: bash`). On Windows a
+    bare `bash` is resolved by CreateProcess to C:\\Windows\\System32\\bash.exe
+    — the WSL launcher — before Git for Windows' bash on PATH, and with no WSL
+    distro installed it fails immediately ("Windows Subsystem for Linux has no
+    installed distributions"). Resolve Git's bash explicitly there (what the
+    runner's `shell: bash` itself uses). On Linux/macOS, bare `bash` is right.
+    """
+    if sys.platform != 'win32':
+        return 'bash'
+    candidates = []
+    git = shutil.which('git')
+    if git:
+        # ...\Git\cmd\git.exe -> ...\Git\bin\bash.exe
+        git_root = os.path.dirname(os.path.dirname(git))
+        candidates.append(os.path.join(git_root, 'bin', 'bash.exe'))
+    candidates.append(r'C:\Program Files\Git\bin\bash.exe')
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    # Last resort: a PATH bash that isn't the System32 WSL launcher.
+    found = shutil.which('bash')
+    if found and 'system32' not in found.lower():
+        return found
+    sys.exit('package_setup: could not find a non-WSL bash on Windows')
 
 
 def main():
@@ -119,7 +149,7 @@ def main():
     print(script)
     print('---')
     subprocess.run(
-        ['bash', '-eu', '-o', 'pipefail', '-c', script],
+        [bash_executable(), '-eu', '-o', 'pipefail', '-c', script],
         check=True,
     )
 

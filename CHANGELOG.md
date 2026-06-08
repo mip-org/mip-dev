@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `scripts/package_setup.py` now resolves Git for Windows' `bash` explicitly on
+  Windows instead of spawning a bare `bash`. On Windows `CreateProcess` resolves
+  a bare `bash` to `C:\Windows\System32\bash.exe` (the WSL launcher) before
+  Git's bash on PATH, so a package with a `windows:` setup script failed
+  immediately with "Windows Subsystem for Linux has no installed distributions."
+  gptoolbox is the first package with a Windows setup script, so it was the
+  first to hit this.
+
 - gptoolbox: add the `windows_x86_64` build (MSVC 2022). `compile.m` re-selects
   MSVC over the channel-default MinGW, configures the deps with the Visual Studio
   generator, fetches header-only CGAL/Boost releases, and links static gmp/mpfr
