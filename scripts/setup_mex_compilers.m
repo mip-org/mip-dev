@@ -1,113 +1,154 @@
 function setup_mex_compilers(architecture, compiler)
-%SETUP_MEX_COMPILERS   Set up the MEX compilers (and export them for CMake).
+%SETUP_MEX_COMPILERS   Set up the MEX compilers.
 %
-%   setup_mex_compilers(architecture)            % uses gcc
-%   setup_mex_compilers(architecture, 'clang')   % uses Apple Clang (macOS)
+%   setup_mex_compilers(architecture)            % Uses architecture's default
+%   setup_mex_compilers(architecture, compiler)  % Uses specified compiler
 %
-% Configures the MEX C/C++ compilers from ../mexopts/<architecture>/, persisting
-% for the session so all subsequent MEX calls in per-package compile.m scripts
-% pick them up. Also exports CC/CXX and CMAKE_C_COMPILER/CMAKE_CXX_COMPILER so
-% CMake/autotools builds run from compile.m use the same compiler as MEX. (We
-% export only the compiler, not the mexopts' full SetEnv: its LDFLAGS is the MEX
-% bundle link line -- -bundle, -lmx/-lmex, exported_symbols maps -- which would
-% wreck a plain static-library build.)
+% Supported compilers for each architecture [default]:
 %
-% On windows_x86_64, MEX uses MinGW-w64 (see setup_mingw_windows below). An
-% architecture with no mexopts subdirectory at all (e.g. 'any', 'numbl_*') does
-% not compile and is skipped silently; requesting a compiler that has no mexopts
-% for an architecture that does compile is an error.
+%   Architecture       Compilers
+%   ----------------   -----------------
+%   'linux_x86_64'     ['gcc']
+%   'macos_arm64'      ['gcc'], 'clang'
+%   'macos_x86_64'     ['gcc'], 'clang'
+%   'windows_x86_64'   ['mingw'], 'msvc'
+%
+% Persists the selection for the session so subsequent mex() calls in
+% per-package compile.m scripts pick it up. Also exports environment variables
+% CC, CXX, CMAKE_C_COMPILER, CMAKE_CXX_COMPILER if needed. An architecture that
+% does not use MEX compilation (e.g. 'any', 'numbl_*') skips the setup.
 
-if nargin < 2 || isempty(compiler)
-    compiler = 'gcc';
+if nargin < 2
+    compiler = [];
 end
 
-if strcmp(architecture, 'windows_x86_64')
-    setup_mingw_windows();
-    return;
-end
+scriptDir        = fileparts(mfilename('fullpath'));
+mipMexoptsDir    = fullfile(scriptDir, '..', 'mexopts', architecture);
+matlabMexoptsDir = fullfile(matlabroot, 'bin', computer('arch'), 'mexopts');
 
-scriptDir      = fileparts(mfilename('fullpath'));
-mexoptsDir     = fullfile(scriptDir, '..', 'mexopts');
-archMexoptsDir = fullfile(mexoptsDir, architecture);
-if ~isfolder(archMexoptsDir)
-    fprintf('No project mexopts for architecture "%s"\n', architecture);
-    return;
-end
+ccXML   = [];
+cxxXML  = [];
+ccPath  = [];
+cxxPath = [];
+switch architecture
+    case 'linux_x86_64'
+        if isempty(compiler), compiler = 'gcc'; end
+        switch compiler
+            case 'gcc'
+                ccXML   = fullfile(mipMexoptsDir, 'gcc.xml');
+                cxxXML  = fullfile(mipMexoptsDir, 'g++.xml');
+                ccPath  = @() get_mex_compiler('C');
+                cxxPath = @() get_mex_compiler('C++');
+            otherwise
+                unsupported(compiler, architecture);
+        end
 
-switch compiler
-    case 'gcc'
-        cXML   = fullfile(archMexoptsDir, 'gcc_static.xml');
-        cxxXML = fullfile(archMexoptsDir, 'g++_static.xml');
-    case 'clang'
-        cXML   = fullfile(archMexoptsDir, 'clang.xml');
-        cxxXML = fullfile(archMexoptsDir, 'clang++.xml');
+    case {'macos_arm64', 'macos_x86_64'}
+        if isempty(compiler), compiler = 'gcc'; end
+        switch compiler
+            case 'gcc'
+                ccXML   = fullfile(mipMexoptsDir, 'gcc.xml');
+                cxxXML  = fullfile(mipMexoptsDir, 'g++.xml');
+                ccPath  = @() get_mex_compiler('C');
+                cxxPath = @() get_mex_compiler('C++');
+            case 'clang'
+                ccXML  = fullfile(mipMexoptsDir, 'clang.xml');
+                cxxXML = fullfile(mipMexoptsDir, 'clang++.xml');
+                [~, ccPath]  = system('xcrun -find clang');   ccPath  = strtrim(ccPath);
+                [~, cxxPath] = system('xcrun -find clang++'); cxxPath = strtrim(cxxPath);
+            otherwise
+                unsupported(compiler, architecture);
+        end
+
+    case 'windows_x86_64'
+        if isempty(compiler), compiler = 'mingw'; end
+        switch compiler
+            case 'mingw'
+                mingw = getenv('MW_MINGW64_LOC');
+                if isempty(mingw), mingw = 'C:\mingw64'; end
+                setenv('MW_MINGW64_LOC', mingw);
+                setenv('PATH', [fullfile(mingw, 'bin') ';' getenv('PATH')]);
+                ccXML   = fullfile(matlabMexoptsDir, 'mingw64.xml');
+                cxxXML  = fullfile(matlabMexoptsDir, 'mingw64_g++.xml');
+                ccPath  = fullfile(mingw, 'bin', 'gcc.exe');
+                cxxPath = fullfile(mingw, 'bin', 'g++.exe');
+            case 'msvc'
+                ccXML  = latest_msvc_mexopt('C');
+                cxxXML = latest_msvc_mexopt('C++');
+            otherwise
+                unsupported(compiler, architecture);
+        end
+
     otherwise
-        error('setup_mex_compilers:badCompiler', ...
-              'Unknown compiler "%s" (expected ''gcc'' or ''clang'').', compiler);
+        if ~(strcmp(architecture, 'any') || startsWith(architecture, 'numbl_'))
+            error('setup_mex_compilers:badArch', 'Unknown architecture "%s".', architecture);
+        end
 end
 
-if ~isfile(cXML) || ~isfile(cxxXML)
+if isempty(ccXML) || isempty(cxxXML)
+    fprintf('Architecture "%s" does not compile MEX. Skipping compiler setup.\n', ...
+            architecture);
+    return
+end
+
+if ~isfile(ccXML) || ~isfile(cxxXML)
     error('setup_mex_compilers:noMexopts', ...
-          'No "%s" mexopts for architecture "%s" (looked for %s, %s).', ...
-          compiler, architecture, cXML, cxxXML);
+          'MEX options file not found: %s / %s', ccXML, cxxXML);
 end
-
-fprintf('Setting up MEX C compiler: %s\n', cXML);
-mex(['-setup:' cXML], 'C');
+fprintf('Setting up MEX C compiler: %s\n', ccXML);
+mex(['-setup:' ccXML], 'C');
 fprintf('Setting up MEX C++ compiler: %s\n', cxxXML);
 mex(['-setup:' cxxXML], 'C++');
 
-% CC/CXX (and CMAKE_<LANG>_COMPILER) for CMake/autotools. gcc: the resolved
-% path from the mexopts (can't hardcode it -- `gcc` is an alias for clang on
-% macOS, and the exact gcc-N is picked dynamically). clang: the absolute Apple
-% Clang path from `xcrun -find` -- the clang mexopts invoke it as
-% "xcrun -sdk macosx<ver> clang" (a command, not a path CMake can use), and
-% xcrun guarantees the same Apple Clang as MEX rather than another clang on PATH.
-switch compiler
-    case 'gcc'
-        cfgC   = mex.getCompilerConfigurations('C',   'Selected');
-        cfgCxx = mex.getCompilerConfigurations('C++', 'Selected');
-        cc  = cfgC.Details.CompilerExecutable;
-        cxx = cfgCxx.Details.CompilerExecutable;
-    case 'clang'
-        [~, cc]  = system('xcrun -find clang');    cc  = strtrim(cc);
-        [~, cxx] = system('xcrun -find clang++');  cxx = strtrim(cxx);
+if ~isempty(ccPath) && ~isempty(cxxPath)
+    if isa(ccPath,  'function_handle'), ccPath  = ccPath();  end
+    if isa(cxxPath, 'function_handle'), cxxPath = cxxPath(); end
+    setenv('CC', ccPath);
+    setenv('CXX', cxxPath);
+    setenv('CMAKE_C_COMPILER', ccPath);
+    setenv('CMAKE_CXX_COMPILER', cxxPath);
+    fprintf('  CC=%s\n  CXX=%s\n', ccPath, cxxPath);
+    fprintf('  CMAKE_C_COMPILER=%s\n  CMAKE_CXX_COMPILER=%s\n', ccPath, cxxPath);
 end
-
-setenv('CC', cc);    setenv('CMAKE_C_COMPILER', cc);
-setenv('CXX', cxx);  setenv('CMAKE_CXX_COMPILER', cxx);
-fprintf('  CC=%s\n  CXX=%s\n', cc, cxx);
 
 end
 
 
-function setup_mingw_windows()
-%SETUP_MINGW_WINDOWS  Select MinGW-w64 as the session MEX compiler on Windows.
-%
-% MATLAB compiles Windows MEX with MinGW-w64, located via the MW_MINGW64_LOC
-% environment variable that mingw64.xml reads. The CI workflow installs the
-% MATLAB-certified MinGW (gfortran 8.1.0; see notes/MATLAB-MINGW.md) and
-% exports MW_MINGW64_LOC; fall back to a stock C:\mingw64 for local builds.
-% Put its bin first on PATH so direct gfortran/mingw32-make calls in package
-% compile scripts resolve to the same toolchain, then select it as the
-% session MEX C compiler so those scripts call mex() without passing
-% -f mingw64.xml (mirroring the gcc_static.xml setup on Linux/macOS). The
-% selection and env persist for the session.
+function unsupported(compiler, architecture)
+%UNSUPPORTED  Error: this compiler is not valid for this architecture.
 
-mingw = getenv('MW_MINGW64_LOC');
-if isempty(mingw)
-    mingw = 'C:\mingw64';
-end
-setenv('MW_MINGW64_LOC', mingw);
-setenv('PATH', [fullfile(mingw, 'bin') ';' getenv('PATH')]);
-fprintf('Using MinGW-w64 at %s\n', mingw);
+error('setup_mex_compilers:badCompiler', ...
+      'Compiler "%s" is not supported for architecture "%s".', ...
+      compiler, architecture);
 
-xml = fullfile(matlabroot, 'bin', 'win64', 'mexopts', 'mingw64.xml');
-if ~isfile(xml)
-    error('setup_mex_compilers:noMinGWxml', ...
-        'MinGW64 mex options file not found: %s', xml);
 end
-fprintf('Setting up MEX C compiler: %s\n', xml);
-mex(['-setup:' xml], 'C');
+
+
+function compiler = get_mex_compiler(lang)
+%GET_MEX_COMPILER  Read the currently-selected MEX compiler executable.
+
+config   = mex.getCompilerConfigurations(lang, 'Selected');
+compiler = config.Details.CompilerExecutable;
+
+end
+
+
+function mexopt = latest_msvc_mexopt(lang)
+%LATEST_MSVC_MEXOPT  Path to the latest installed MSVC mexopts for a language.
+
+cfgs = mex.getCompilerConfigurations(lang, 'Installed');
+msvc = cfgs(arrayfun(@(c) contains(c.Name, 'Microsoft Visual C++'), cfgs));
+if isempty(msvc)
+    error('setup_mex_compilers:noMSVC', ...
+          'No Microsoft Visual C++ compiler found for %s.', lang);
+end
+% Pick the latest Visual Studio (highest year in the config name).
+years = zeros(1, numel(msvc));
+for i = 1:numel(msvc)
+    tok = regexp(msvc(i).Name, '(\d{4})', 'tokens', 'once');
+    if ~isempty(tok); years(i) = str2double(tok{1}); end
+end
+[~, latest] = max(years);
+mexopt = msvc(latest).MexOpt;
 
 end

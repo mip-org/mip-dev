@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <config
-    Name="gcc-static"
-    ShortName="gcc-static"
+    Name="gcc"
+    ShortName="gcc"
     Manufacturer="GNU"
     Version="$GCC_VERSION"
     Language="C"
@@ -26,43 +26,41 @@
     <vars
         CC="$GCC"
         CMDLINE100="$CC -c $DEFINES $INCLUDE $CFLAGS $OPTIM $SRC -o $OBJ"
-        CMDLINE200="$LD $LDFLAGS $LINKOPTIM $LINKEXPORTVER $OBJS $CLIBS $LINKLIBS -o $EXE"
+        CMDLINE200="$LD $LDFLAGS $LINKOPTIM $LINKEXPORT $LINKEXPORTVER $OBJS $CLIBS $LINKLIBS -o $EXE"
         DEFINES="-D_GNU_SOURCE -DMATLAB_MEX_FILE"
-        CFLAGS="-fPIC -fexceptions -fwrapv -ffp-contract=off -fno-omit-frame-pointer -pthread"
+        CFLAGS="-arch $GCC_ARCH -fPIC -fexceptions -fwrapv -ffp-contract=off -fno-omit-frame-pointer -pthread"
         INCLUDE="-I&quot;$MATLABROOT/extern/include&quot; -I&quot;$MATLABROOT/simulink/include&quot;"
         COPTIMFLAGS="-O3 -DNDEBUG"
         CDEBUGFLAGS="-g"
         LD="$CC"
-        LDFLAGS="-pthread -Wl,--no-undefined -Wl,-rpath-link,$MATLABROOT/bin/$ARCH -Wl,--as-needed -z noexecstack -shared"
+        LDFLAGS="-nodefaultrpaths -Wl,-twolevel_namespace -Wl,-dead_strip_dylibs -arch $GCC_ARCH -bundle"
         FUNCTIONMAP="&quot;$MATLABROOT/extern/lib/$ARCH/mexFunction.map&quot;"
         VERSIONMAP="&quot;$MATLABROOT/extern/lib/$ARCH/c_exportsmexfileversion.map&quot;"
-        LINKEXPORT="-Wl,--version-script,$FUNCTIONMAP"
-        LINKEXPORTVER="-Wl,--version-script,$VERSIONMAP"
-        LINKLIBS="-L&quot;$MATLABROOT/bin/$ARCH&quot; -lmx -lmex -lmat -lm -Wl,--push-state,--no-as-needed -lstdc++ -Wl,--pop-state"
+        LINKEXPORT="-Wl,-exported_symbols_list,$FUNCTIONMAP"
+        LINKEXPORTVER="-Wl,-exported_symbols_list,$VERSIONMAP"
+        STATICLIBS="-static-libstdc++ -static-libgcc -static-libgfortran -static-libquadmath -lgfortran -lquadmath"
+        LINKLIBS="$STATICLIBS -L&quot;$MATLABROOT/bin/$ARCH&quot; -lmx -lmex -lmat"
         LDOPTIMFLAGS="-O"
         LDDEBUGFLAGS="-g"
         OBJEXT=".o"
-        LDEXT=".mexa64"
+        LDEXT=".mex$ARCH"
         SETENV="CC=&quot;$CC&quot;
-                CXX=&quot;g++&quot;
                 CFLAGS=&quot;$CFLAGS $DEFINES&quot;
-                CXXFLAGS=&quot;$CFLAGS $DEFINES&quot;
                 COPTIMFLAGS=&quot;$COPTIMFLAGS&quot;
-                CXXOPTIMFLAGS=&quot;$COPTIMFLAGS&quot;
                 CDEBUGFLAGS=&quot;$CDEBUGFLAGS&quot;
-                CXXDEBUGFLAGS=&quot;$CDEBUGFLAGS&quot;                
-                MW_GLIBC_SHIM=&quot;$MW_GLIBC_SHIM&quot;
                 LD=&quot;$LD&quot;
-                LDXX=&quot;g++&quot;
                 LDFLAGS=&quot;$LDFLAGS $LINKLIBS $LINKEXPORT&quot;
-                LDDEBUGFLAGS=&quot;$LDDEBUGFLAGS&quot;">
-    </vars>
+                LDDEBUGFLAGS=&quot;$LDDEBUGFLAGS&quot;"
+    />
     <locationFinder>
         <GCC>
-            <cmdReturns name="which gcc" />
+            <cmdReturns name="which $(compgen -c | grep -E '^gcc-[0-9]+$' | sort -V | tail -1)" />
         </GCC>
         <GCC_VERSION>
-            <cmdReturns name="gcc -dumpversion"/>
+            <cmdReturns name="$(compgen -c | grep -E '^gcc-[0-9]+$' | sort -V | tail -1) -dumpversion" />
         </GCC_VERSION>
+        <GCC_ARCH>
+            <cmdReturns name="uname -m" />
+        </GCC_ARCH>
     </locationFinder>
 </config>

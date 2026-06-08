@@ -49,7 +49,7 @@ path must contain no spaces (we use `C:\mingw810`).
 
 This is centralized in `scripts/setup_mex_compilers.m` (called by
 `bundle_one` before any package compile script), mirroring the
-`gcc_static.xml` setup on Linux/macOS: on `windows_x86_64` it reads
+`gcc.xml` setup on Linux/macOS: on `windows_x86_64` it reads
 `MW_MINGW64_LOC` (falling back to `C:\mingw64` for local builds), puts the
 MinGW `bin` first on `PATH`, and selects it as the session MEX compiler via
 `mex -setup:mingw64.xml C`. Per-package `compile_windows.m` scripts then

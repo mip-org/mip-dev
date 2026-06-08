@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <config
-    Name="g++-static"
-    ShortName="g++-static"
+    Name="g++"
+    ShortName="g++"
     Manufacturer="GNU"
     Version="$GCC_VERSION"
     Language="C++"

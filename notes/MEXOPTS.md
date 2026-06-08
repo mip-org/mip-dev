@@ -23,7 +23,7 @@ choices** — ignore those when reasoning about behavior.
 
 | Change vs stock | Why |
 |---|---|
-| `-O3 -DNDEBUG` (stock: `-O2 -DNDEBUG`) | Perf. **Open decision** — `-O2` is the conventional, safer default for building arbitrary third-party code; see *Open decisions* below. |
+| `-O3 -DNDEBUG` (stock: `-O2 -DNDEBUG`) | Perf, channel-wide — kept deliberately over stock `-O2` (decision settled; both platforms stay consistent). `-O3` targets the baseline ISA (it does **not** imply `-march=native`), so it adds no portability/SIGILL hazard; and the CMake-built deps are already `-O3` (Release), so this keeps the MEX TUs consistent with them. |
 | No `-std=` (stock pins one: c++11 Linux / c++14 macOS) | The C++ standard is a **per-package** concern — packages set `CMAKE_CXX_STANDARD` or their own `mex()` flags. Pinning the oldest standard channel-wide would break modern deps; pinning a modern one could break genuinely old code. Stay out of it. |
 | mex-only: dropped `<client>` engine + mbuild blocks (and the vars only they used — `MWCPPLIB` on Linux, the `MATLABMEX` indirection) | The channel builds **mex** files, never `mbuild` standalones or engine apps. |
 | Predictable arithmetic: `-fwrapv` + `-ffp-contract=off` | Defined signed overflow + no FMA contraction → reproducible FP across machines. *Already stock on macOS R2023b; a custom addition on Linux R2022a.* |
@@ -60,10 +60,6 @@ mismatch warning visible — see [MACOS-MEX-CPP-LINKER.md](MACOS-MEX-CPP-LINKER.
 
 ## Open decisions
 
-- **`-O3` vs `-O2`** (both platforms). `-O3` diverges from *both* R2022a and R2023b stock
-  (which use `-O2`). For a channel building arbitrary third-party code, `-O2` is the safer,
-  more conventional default; `-O3` is defensible only with a measured numerical-perf reason.
-  Whatever is chosen should apply to both platforms (they're currently consistent).
 - **Dropping `-ld_classic`** when the macOS build MATLAB reaches R2025b+ (their `mex` driver
   applies the C++ export map conditionally) or when Apple removes the flag. Trigger and
   fallback documented in [MACOS-MEX-CPP-LINKER.md](MACOS-MEX-CPP-LINKER.md) §"When to drop".

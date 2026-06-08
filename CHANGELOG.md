@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Rewrote `scripts/setup_mex_compilers.m` as a single `(architecture, compiler)`
+  switch that resolves the mexopts XML pair to apply and the compiler to export,
+  followed by one shared tail that runs `mex -setup` and exports
+  `CC`/`CXX`/`CMAKE_<LANG>_COMPILER`. The exported compiler is a plain path up
+  front for clang (`xcrun -find`) and mingw (`$MW_MINGW64_LOC`), or a deferred
+  handle for gcc (read from the `Selected` config after setup); MSVC exports
+  nothing (the VS CMake generator finds `cl.exe` itself). An unknown architecture
+  now errors instead of skipping silently (`any`/`numbl_*` still skip).
+
+- Renamed the Linux/macOS GNU mexopts `gcc_static.xml`/`g++_static.xml` →
+  `gcc.xml`/`g++.xml` (filename and internal `Name`/`ShortName`). Pure rename, no
+  flag changes; the `-O3 -DNDEBUG` level is unchanged and now recorded as settled
+  channel policy in `notes/MEXOPTS.md`.
+
 - Fixed the Linux MEX link failing with undefined `libstdc++` symbols (e.g. `vtable for
   std::basic_filebuf`, `std::locale::~locale`) pulled from gcc-toolset-10's
   `libstdc++_nonshared.a`. RHEL's gcc-toolset splits `libstdc++` into the base-system
