@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Pinned the `macos_arm64` CI runner to `macos-14` (from `macos-latest`) and set the
+  macOS `clang`/`clang++`/`gcc`/`g++` mexopts `MACOSX_DEPLOYMENT_TARGET` to `14.0`. A
+  macOS MEX's real deployment floor is set by the statically-linked Homebrew bottles
+  (`gmp`/`mpfr`; and `libgfortran`/`libstdc++`/`libquadmath` from Homebrew GCC), which
+  are built for the runner's macOS — not by `-mmacosx-version-min` (which `dyld` does not
+  even enforce at `dlopen`). `macos-latest` drifts upward (macOS 15 today → floor 15+);
+  `macos-14` is the oldest arm64 runner Homebrew bottles exist for, giving floor 14+.
+  `14.0` matches the bottle so the stamp is honest and the version-min warning stays
+  meaningful. See `notes/MACOS-DEPLOYMENT-TARGET.md`.
+
 - Removed `-w` from the macOS `g++` mexopts (both arches). It suppressed *all*
   linker warnings — including the `-mmacosx-version-min` mismatch warning, which
   catches an object or dependency built for a newer macOS than the 11.0 floor (a

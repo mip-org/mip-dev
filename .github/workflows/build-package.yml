@@ -65,7 +65,7 @@ jobs:
           case "${{ inputs.architecture }}" in
             any)            runner=ubuntu-latest ;;
             linux_x86_64)   runner=ubuntu-latest ;;
-            macos_arm64)    runner=macos-latest ;;
+            macos_arm64)    runner=macos-14 ;;
             windows_x86_64) runner=windows-latest ;;
             *)
               echo "Unknown architecture: ${{ inputs.architecture }}" >&2

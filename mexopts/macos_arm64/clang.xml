@@ -28,7 +28,7 @@
         CMDLINE200="$LD $LDFLAGS $OBJS $LINKOPTIM $LINKEXPORTVER $CLIBS $LINKLIBS -o $EXE"
         CC="$XCRUN_DIR/xcrun -sdk macosx$SDKVER clang"
         DEFINES="-DMATLAB_MEX_FILE"
-        MACOSX_DEPLOYMENT_TARGET="11.0"
+        MACOSX_DEPLOYMENT_TARGET="14.0"
         CFLAGS="-fno-common -arch arm64 -mmacosx-version-min=$MACOSX_DEPLOYMENT_TARGET -fexceptions -isysroot $ISYSROOT -fwrapv -ffp-contract=off"
         INCLUDE="-I&quot;$MATLABROOT/extern/include&quot; -I&quot;$MATLABROOT/simulink/include&quot;"
         COPTIMFLAGS="-O3 -DNDEBUG"
