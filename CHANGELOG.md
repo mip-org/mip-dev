@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Dropped `-static-libstdc++`/`-static-libgcc` from the Linux `gcc`/`g++` mexopts:
+  the MEX now dynamic-links `libstdc++`/`libgcc_s` (like it already does `libgfortran`)
+  and lets MATLAB resolve them (all in `linux_skip_set`). The static linking was
+  redundant defense — the GCC-8.5 pin caps `GLIBCXX` at 3.4.25 (within MATLAB's bundled
+  `libstdc++`) and the strip-test gate catches any overshoot — and was inconsistent with
+  `libgfortran`, whose `.a` is non-PIC and can't be static-linked anyway. Dynamic is
+  uniform, matches stock, and avoids a second `libstdc++`/unwinder copy alongside
+  MATLAB's. (macOS keeps static linking — MATLAB ships no GNU runtime there.) Verified on
+  R2022a that a dynamic C++ MEX builds, loads, and runs. Also documents the macOS-vs-Linux
+  GCC-version and static-link distinction in `notes/MACOS-DEPLOYMENT-TARGET.md`.
+
 - Pinned the `macos_arm64` CI runner to `macos-14` (from `macos-latest`) and set the
   macOS `clang`/`clang++`/`gcc`/`g++` mexopts `MACOSX_DEPLOYMENT_TARGET` to `14.0`. A
   macOS MEX's real deployment floor is set by the statically-linked Homebrew bottles

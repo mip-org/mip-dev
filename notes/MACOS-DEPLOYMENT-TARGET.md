@@ -77,6 +77,42 @@ not by `MACOSX_DEPLOYMENT_TARGET`. So `MACOSX_DEPLOYMENT_TARGET` is a build-hygi
   newer (15.0) object sneaks in. (We removed `-w` from `g++.xml` precisely to keep that
   warning visible — see `MACOS-MEX-CPP-LINKER.md` for the `-w`/`-ld_classic` story.)
 
+## Aside: macOS needs no GCC version pin (unlike Linux), and the static-link split
+
+`MATLAB-GCC.md` pins **GCC 8.5 on Linux** so a MEX's `GLIBCXX` stays within MATLAB's
+bundled GNU `libstdc++`. **That reasoning is Linux-specific and does not apply on macOS**,
+for two independent reasons:
+
+1. **No shared GNU libstdc++.** MATLAB on macOS links **libc++** (`/usr/lib/libc++.1.dylib`
+   — confirmed via `otool -L libmx.dylib`), not GNU `libstdc++`. So a GCC-built MEX shares
+   no GNU C++ runtime with MATLAB, and the MEX↔MATLAB boundary is the **C** Matrix API
+   (`mxArray*`), so no C++ ABI crosses it. There is no `GLIBCXX`-vs-MATLAB constraint → the
+   GCC version is free (latest Homebrew GCC is fine). Pinning a GCC version would buy only
+   build *reproducibility*, not compatibility — far lower stakes than the runner pin.
+
+2. **The GNU runtime is dynamic on Linux but static on macOS — because of who ships it.**
+   On **Linux**, MATLAB ships the GNU runtime (`libstdc++`/`libgcc_s`/`libgfortran` in
+   `sys/os/glnxa64`, on `LD_LIBRARY_PATH`; all in `linux_skip_set` — see
+   `MEX-RUNTIME-LIBS.md`), so the MEX **dynamic-links all of it and lets MATLAB resolve it**.
+   We previously static-linked `libstdc++`/`libgcc` on Linux but dropped it: it was redundant
+   defense (the GCC-8.5 pin caps `GLIBCXX` at 3.4.25, within every supported MATLAB's bundled
+   `libstdc++`, and the strip-test gate catches any overshoot as a red build), it was
+   inconsistent with `libgfortran` — which is *forced* dynamic, since its `.a` is **non-PIC**
+   (`R_X86_64_TPOFF32 … recompile with -fPIC`, so it can't go in the shared MEX) — and a
+   static GCC runtime puts a second copy of `libstdc++`/the unwinder in the process alongside
+   MATLAB's. Dynamic is uniform, matches stock, and is safe given the pin + gate.
+
+   On **macOS**, MATLAB ships **no** GNU runtime (it uses libc++), so the MEX must carry its
+   own — and it can, because macOS/arm64 code is always PIC, so every Homebrew `.a`
+   (`libstdc++`/`libgcc`/`libgfortran`/`libquadmath`) links into the bundle. That
+   self-containment is exactly what plants the deployment-floor coupling above: the static
+   archives carry the bottle's `minos`.
+
+   (Orthogonal: Linux *does* statically link the from-source **dependency** libs —
+   gmp/mpfr/libccd/… — which must be built `-fPIC` to go in the MEX `.so`, via
+   `CMAKE_POSITION_INDEPENDENT_CODE=ON`, the "Linux link fix". Those are the dep libs, not
+   the GNU runtime.)
+
 ## Going lower than 14, or verifying
 
 - **Below macOS 14 is only feasible on the clang path**, and only by building `gmp`/`mpfr`
