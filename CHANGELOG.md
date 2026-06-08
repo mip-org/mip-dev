@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Dropped `-std=c++17` from the macOS `clang++` mexopts, leaving the C++
+  standard unset like the channel's gcc/g++ mexopts (which dropped stock's
+  `-std=c++11`). The standard is a per-package property declared at the call
+  site: gptoolbox already passes `-std=c++17` in its `compile.m`, so the build
+  is unchanged. Keeps the channel's toolchains uniformly std-neutral.
+
 - Dropped `-fno-omit-frame-pointer` from the macOS `clang`/`clang++` mexopts.
   These target `-arch arm64`, and Apple's ARM64 ABI mandates the frame-pointer
   chain — clang keeps it even under `-fomit-frame-pointer` — so the flag is a
