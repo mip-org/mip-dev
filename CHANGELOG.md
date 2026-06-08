@@ -12,7 +12,8 @@
   unresolved. Guard `-lstdc++` in the `gcc` mexopts with
   `-Wl,--push-state,--no-as-needed … -Wl,--pop-state` so the base library is always
   retained as a `NEEDED` entry, while `--as-needed` still trims other libs. (Stock
-  R2022a carries `-lstdc++` but no `--as-needed`, so it never hit this.)
+  R2022a carries `-lstdc++` but no `--as-needed`, so it never hit this.) See
+  `notes/LINUX-LIBSTDCXX-ASNEEDED.md` for the full root-cause analysis.
 
 - Fixed the Linux build failing at `mex -setup` (`compiler is not detected`) after the
   gcc-toolset-10 switch. The toolset lives under `/opt/rh`, and prepending it to PATH via
