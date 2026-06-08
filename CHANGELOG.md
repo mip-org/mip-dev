@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Fixed the Linux build failing at `mex -setup` (`compiler is not detected`) after the
+  gcc-toolset-10 switch. The toolset lives under `/opt/rh`, and prepending it to PATH via
+  `$GITHUB_ENV` reaches `run:` steps but not MATLAB's mex compiler detection, which runs
+  `which gcc` against only the baseline PATH (`/usr/bin` etc.) — so the gcc mexopts went
+  undetected (stock GCC 8.5 worked only because it sat at `/usr/bin/gcc`). The toolchain
+  step now symlinks the toolset bin into `/usr/bin` (`ln -sf /opt/rh/gcc-toolset-10/root/usr/bin/*
+  /usr/bin/`) instead of the PATH prepend. This also pins the binutils: `gcc-toolset-10-gcc`
+  pulls in the base `binutils` 2.30 as a dependency and gcc-10 resolves `as`/`ld` by bare
+  name via PATH, so without the symlinks it assembled/linked with 2.30 rather than the
+  toolset's 2.35. Symlinks touch only PATH-based tool resolution, never `LD_LIBRARY_PATH`,
+  so the strip-test environment is unaffected. Verified on a RHEL 8.10 runner: `which gcc`
+  resolves, gcc finds its own `cc1`/`libexec` through the symlink, `as`/`ld` are 2.35, and
+  C++17 and Fortran both compile and run.
+
 - Build-request issues now get a canonical title even when they resolve to more than
   one dispatch. `canonical_title()` lists the architectures for a single-package request
   with three or fewer of them (e.g. `Build: \`fmm2d@main\` (linux_x86_64, macos_arm64,
@@ -15,8 +29,9 @@
   statically supplies any newer C++17/20 symbols via `libstdc++_nonshared.a`, so the
   GLIBCXX floor stays `3.4.25` (within R2022a's bundled `libstdc++`) — a newer compiler
   with no compatibility regression — and glibc stays 2.28. gcc-toolset is a Software
-  Collection under `/opt/rh` (not on the default PATH), so the step prepends its bin to
-  PATH via `$GITHUB_ENV`; the toolset's own binutils 2.35 comes too (keeping gcc-10
+  Collection under `/opt/rh` (not on the default PATH), so the step symlinks its bin into
+  `/usr/bin` (see the fix entry above for why a `$GITHUB_ENV` PATH prepend doesn't reach
+  MATLAB's mex detection); the toolset's own binutils 2.35 comes too (keeping gcc-10
   paired with its matching `as`/`ld`, not the system 2.30). Verified on ubi8: a C++17
   `std::filesystem` `.so` links yet requires only `GLIBCXX_3.4.21`, and the toolset runs
   from PATH alone (no `LD_LIBRARY_PATH`).

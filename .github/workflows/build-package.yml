@@ -156,19 +156,26 @@ jobs:
                          make unzip python39 python39-pip libatomic
           dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
           dnf install -y patchelf
-          # gcc-toolset is a Software Collection installed under /opt/rh, NOT on the
-          # default PATH (it must not shadow the system toolchain). Prepend its bin so
-          # later steps -- including MATLAB's mex -> `which gcc` -- resolve GCC 10 (no
-          # CC/CXX override needed). PATH alone suffices: the toolset binaries run
-          # without LD_LIBRARY_PATH (verified), so we don't pollute LD_LIBRARY_PATH
-          # (it would otherwise ride into the strip-test; MATLAB prepends its own libs
-          # there regardless).
-          echo "PATH=/opt/rh/gcc-toolset-10/root/usr/bin:$PATH" >> "$GITHUB_ENV"
+          # gcc-toolset is a Software Collection under /opt/rh, off the default PATH.
+          # Putting it on PATH via $GITHUB_ENV reaches `run:` steps but NOT MATLAB's
+          # mex compiler detection: mex runs `which gcc` in an environment that
+          # searches only the baseline PATH (/usr/bin etc.), so a gcc under /opt/rh
+          # goes undetected and `mex -setup` fails ("compiler is not detected").
+          # Stock GCC 8.5 worked only because it lived at /usr/bin/gcc. So symlink the
+          # toolset bin into /usr/bin, where mex provably looks. This also pins the
+          # assembler/linker: gcc-toolset-10-gcc pulls in the base binutils 2.30 (->
+          # /usr/bin/as,ld) as a dependency, and gcc-10 resolves as/ld by bare name
+          # via PATH -- so without these symlinks it would assemble/link with 2.30
+          # rather than the toolset's 2.35. The symlinks touch only PATH-based tool
+          # resolution, never LD_LIBRARY_PATH, so the strip-test environment is
+          # unaffected. (gcc canonicalizes the symlink to find its own cc1/libexec.)
+          ln -sf /opt/rh/gcc-toolset-10/root/usr/bin/* /usr/bin/
           # The build steps invoke `python`, but RHEL 8 ships only python3.x, and
           # setup-python's prebuilt CPython needs glibc >= 2.34 (won't run here).
           # Point `python` at the container's native (glibc-2.28) python3.9.
           ln -sf /usr/bin/python3.9 /usr/bin/python
-          /opt/rh/gcc-toolset-10/root/usr/bin/gcc --version
+          gcc --version
+          as --version | head -1
           python --version
 
       - name: macOS gfortran alias
