@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Switched the Linux build from ubi8's stock GCC 8.5 to **gcc-toolset-10** (GCC 10.3),
+  installed from the Rocky AppStream repos the toolchain step already adds. RHEL's
+  gcc-toolset dynamic-links the base-system `libstdc++` (`GLIBCXX_3.4.25`) and
+  statically supplies any newer C++17/20 symbols via `libstdc++_nonshared.a`, so the
+  GLIBCXX floor stays `3.4.25` (within R2022a's bundled `libstdc++`) — a newer compiler
+  with no compatibility regression — and glibc stays 2.28. gcc-toolset is a Software
+  Collection under `/opt/rh` (not on the default PATH), so the step prepends its bin to
+  PATH via `$GITHUB_ENV`; the toolset's own binutils 2.35 comes too (keeping gcc-10
+  paired with its matching `as`/`ld`, not the system 2.30). Verified on ubi8: a C++17
+  `std::filesystem` `.so` links yet requires only `GLIBCXX_3.4.21`, and the toolset runs
+  from PATH alone (no `LD_LIBRARY_PATH`).
+
 - Dropped `-static-libstdc++`/`-static-libgcc` from the Linux `gcc`/`g++` mexopts:
   the MEX now dynamic-links `libstdc++`/`libgcc_s` (like it already does `libgfortran`)
   and lets MATLAB resolve them (all in `linux_skip_set`). The static linking was
