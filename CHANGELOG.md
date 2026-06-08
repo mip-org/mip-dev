@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Build-request issues now get a canonical title even when they resolve to more than
+  one dispatch. `canonical_title()` lists the architectures for a single-package request
+  with three or fewer of them (e.g. `Build: \`fmm2d@main\` (linux_x86_64, macos_arm64,
+  windows_x86_64)`), falls back to a dispatch count above that, and summarizes
+  multi-package requests as `Build: N dispatches across M packages`. Previously only
+  single-dispatch requests were renamed; everything else kept its raw title (e.g. `build`).
+
 - Switched the Linux build from ubi8's stock GCC 8.5 to **gcc-toolset-10** (GCC 10.3),
   installed from the Rocky AppStream repos the toolchain step already adds. RHEL's
   gcc-toolset dynamic-links the base-system `libstdc++` (`GLIBCXX_3.4.25`) and
@@ -89,6 +96,10 @@
   GCC version — sets the minimum supported release. Corrects the note's earlier
   "GCC 8 → R2020b+" claim (true only for the libstdc++ axis) and adds a
   three-axis (glibc / compiler-runtime / MEX-API) summary table.
+
+- Renamed the channel's gcc mexopts `gcc_static.xml`/`g++_static.xml` to
+  `gcc.xml`/`g++.xml` (Linux/macOS), updating `setup_mex_compilers.m` and the
+  build notes that reference them.
 
 - Added `linux_x86_64` to the `gptoolbox` package. Same split build as macOS
   (CMake builds the static dependency libs; `mex()` links each MEX through the

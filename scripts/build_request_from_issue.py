@@ -300,12 +300,34 @@ def render_validation_comment(entries, errors):
 
 
 def canonical_title(entries):
-    """Canonical title rewrite — only for single-entry requests."""
-    if len(entries) != 1:
+    """Canonical title rewrite for a build request.
+
+    Single package: list its architectures when there are three or fewer
+    (e.g. ``Build: `fmm2d@main` (linux_x86_64, macos_arm64, windows_x86_64)``),
+    otherwise summarize with a dispatch count. Requests spanning multiple
+    packages are summarized by dispatch and package counts.
+
+    ``force`` is appended only when it applies to every listed dispatch.
+    """
+    if not entries:
         return None
-    e = entries[0]
-    suffix = ", force" if e["force"] else ""
-    return f"Build: `{e['name']}@{e['version']}` ({e['architecture']}{suffix})"
+
+    pkgs = list(dict.fromkeys((e["name"], e["version"]) for e in entries))
+    force_suffix = ", force" if all(e["force"] for e in entries) else ""
+
+    if len(pkgs) == 1:
+        name, version = pkgs[0]
+        arches = [e["architecture"] for e in entries]
+        if len(arches) <= 3:
+            inside = ", ".join(arches)
+        else:
+            inside = f"{len(arches)} dispatches"
+        return f"Build: `{name}@{version}` ({inside}{force_suffix})"
+
+    return (
+        f"Build: {len(entries)} dispatches across "
+        f"{len(pkgs)} packages{force_suffix}"
+    )
 
 
 def cmd_validate(args):
