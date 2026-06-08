@@ -82,4 +82,5 @@
             <cmdReturns name="clang --version | grep -Eo '[0-9]+\.[0-9]+\.[0-9]'|head -1" />
         </CLANG_VERSION>
     </locationFinder>
+    <env INCLUDE="$XCODE_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin/../include/c++/v1;$XCODE_DIR/Toolchains/XcodeDefault.xctoolchain/usr/bin/../lib/clang/$CLANG_VERSION/include;$XCODE_DIR/Toolchains/XcodeDefault.xctoolchain/usr/include;$ISYSROOT/usr/include;$ISYSROOT/System/Library/Frameworks"/>
 </config>
