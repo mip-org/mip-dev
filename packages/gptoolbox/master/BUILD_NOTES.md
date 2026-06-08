@@ -24,7 +24,7 @@ files itself. We deliberately split those two jobs:
 |---|---|---|
 | MATLAB lib linking | `mex()` links by basename → **no patchelf** | `find_package(Matlab)` bakes absolute paths into `DT_NEEDED` → needs a Linux patchelf fixup |
 | `find_package(Matlab)` | not used | relies on gptoolbox's bundled `FindMatlab` version map (breaks when CI MATLAB > the map; bit us locally on R2025b) |
-| Toolchain | the channel's `gcc_static`/`g++_static` mexopts (static libstdc++/libgcc), same as every other package | CMake's own; static linking + ABI must be re-managed |
+| Toolchain | the channel's `gcc`/`g++` mexopts (static libstdc++/libgcc), same as every other package | CMake's own; static linking + ABI must be re-managed |
 | Source→lib/define map | **hand-maintained** in `compile.m` (the cost) | read directly from upstream `compile_each` (no duplication) |
 
 We accept the one cost of A — keeping the ~12-group table in sync with
@@ -49,7 +49,7 @@ no Boost build and no ABI concern for them.
 | Arch | compiler | how |
 |---|---|---|
 | macos_arm64 | `clang++.xml` (Apple Clang, libc++) | `compile.m` selects clang via `setup_mex_compilers('macos_arm64','clang')` — native toolchain for CGAL/libigl/embree; overrides the channel-default gcc |
-| linux_x86_64 | `gcc_static.xml` (ubi8 GCC 8.5, libstdc++) | channel default |
+| linux_x86_64 | `gcc.xml` (ubi8 GCC 8.5, libstdc++) | channel default |
 | windows_x86_64 | **MSVC 2022** | `compile.m` re-selects MSVC, overriding the channel's MinGW default (gptoolbox has no Fortran; MinGW gcc 8.1 is too old for CGAL 6 / Boost 1.86 / embree 4) |
 
 ## Dependencies — per architecture
@@ -84,7 +84,7 @@ built with the same compiler `mex()` uses (ABI rule above).
 
 → self-contained MEX; nothing bundled. Deps build dominated by embree (~5–8 min).
 
-### linux_x86_64 — `mex` compiler: `gcc_static` (ubi8 GCC 8.5, glibc 2.28)
+### linux_x86_64 — `mex` compiler: `gcc` (ubi8 GCC 8.5, glibc 2.28)
 
 | Library | Linkage | Source | Build time (est.) |
 |---|---|---|---|

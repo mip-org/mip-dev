@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- gptoolbox: add the `windows_x86_64` build (MSVC 2022). `compile.m` re-selects
+  MSVC over the channel-default MinGW, configures the deps with the Visual Studio
+  generator, fetches header-only CGAL/Boost releases, and links static gmp/mpfr
+  from vcpkg (`x64-windows-static-md`); the MEX get `/std:c++17 /bigobj` plus
+  `NOMINMAX`/`_USE_MATH_DEFINES`. El Topo and the macOS-only impaste are skipped
+  on Windows, and `CMakeLists.txt` gates the El Topo dep off under `WIN32`.
+  `mip.yaml` declares the arch and adds a `windows:` setup that `vcpkg install`s
+  gmp/mpfr. The deps `CMakeLists.txt` now emits its manifest per-config as
+  `manifest-<CONFIG>.txt` (`compile.m` reads `manifest-Release.txt`): the
+  multi-config VS generator can't write a single fixed-path manifest whose
+  `$<TARGET_FILE>` entries differ per config — this also corrects a writer/reader
+  filename mismatch that affected every arch.
+
 - gptoolbox (macOS): compile `impaste`'s `paste.mm` with `-fno-objc-arc` so the
   manual-reference-counting Objective-C++ builds regardless of the toolchain's
   ARC default (set at the `mex()` call site, since the memory model is a per-`.mm`

@@ -18,7 +18,7 @@ paths:
   - path: wrappers
 
 builds:
-  - architectures: [macos_arm64, linux_x86_64]
+  - architectures: [macos_arm64, linux_x86_64, windows_x86_64]
     compile_script: compile.m
     test_script: test_gptoolbox_mex.m
     setup:
@@ -26,3 +26,9 @@ builds:
         - "brew install cmake cgal"
       linux:
         - "dnf install -y CGAL-devel boost-devel openblas-devel cmake m4 xz"
+      windows:
+        # CGAL + Boost are fetched header-only by compile.m; vcpkg supplies the
+        # one real dependency, static gmp/mpfr, as MSVC-compatible .lib. The
+        # triplet must match compile.m's VCPKG_TARGET_TRIPLET (static libs,
+        # dynamic CRT). cmake ships on the windows-latest runner.
+        - "vcpkg install gmp:x64-windows-static-md mpfr:x64-windows-static-md"

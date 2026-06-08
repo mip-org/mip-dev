@@ -5,7 +5,7 @@
 #
 # This is a channel-provided file overlaid at the gptoolbox source root (the
 # upstream repo has no root CMakeLists.txt). compile.m configures it into a temp
-# build dir and reads the manifest.txt emitted below — include dirs ("I <dir>")
+# build dir and reads the manifest-<CONFIG>.txt emitted below — include dirs ("I <dir>")
 # and categorized static libs ("L <category> <path>") — to assemble the mex()
 # command lines. See BUILD_NOTES.md for the full rationale.
 cmake_minimum_required(VERSION 3.16)
@@ -72,14 +72,18 @@ FetchContent_MakeAvailable(libccd)
 # Pre-seed that cache var OFF so the check is skipped and the flag never added.
 # eltopo links BLAS/LAPACK; compile.m satisfies them with MATLAB's
 # -lmwlapack/-lmwblas at the mex link (no external/bundled BLAS).
-set(COMPILER_SUPPORTS_MARCH_NATIVE OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(eltopo
-  GIT_REPOSITORY https://github.com/alecjacobson/eltopo.git
-  GIT_TAG 3cf988aae467392d1066bdde0be3f54487a0ba2c)
-FetchContent_GetProperties(eltopo)
-if(NOT eltopo_POPULATED)
-  FetchContent_Populate(eltopo)
-  add_subdirectory(${eltopo_SOURCE_DIR}/eltopo3d ${eltopo_BINARY_DIR})
+# Skipped on Windows (2015-era C++ + find_package(BLAS) fight MSVC; one niche
+# MEX). compile.m omits the eltopo MEX and its build target there too.
+if(NOT WIN32)
+  set(COMPILER_SUPPORTS_MARCH_NATIVE OFF CACHE BOOL "" FORCE)
+  FetchContent_Declare(eltopo
+    GIT_REPOSITORY https://github.com/alecjacobson/eltopo.git
+    GIT_TAG 3cf988aae467392d1066bdde0be3f54487a0ba2c)
+  FetchContent_GetProperties(eltopo)
+  if(NOT eltopo_POPULATED)
+    FetchContent_Populate(eltopo)
+    add_subdirectory(${eltopo_SOURCE_DIR}/eltopo3d ${eltopo_BINARY_DIR})
+  endif()
 endif()
 
 # --- Static gmp / mpfr (CGAL's number types) ------------------------------
@@ -143,4 +147,9 @@ string(APPEND _m "L cgal ${GMP_STATIC}\n")
 # El Topo static lib (eltopo3d's target is aliased to libeltopo).
 string(APPEND _m "L eltopo $<TARGET_FILE:libeltopo>\n")
 
-file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/manifest.txt" CONTENT "${_m}")
+# Per-config output: on the multi-config VS generator, $<CONFIG> makes
+# file(GENERATE) emit one manifest per config, each with $<TARGET_FILE> resolved
+# for that config (a fixed path errors — "written multiple times with different
+# content"). On single-config Makefiles/Ninja, $<CONFIG> is CMAKE_BUILD_TYPE
+# (Release here). compile.m reads manifest-Release.txt.
+file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/manifest-$<CONFIG>.txt" CONTENT "${_m}")

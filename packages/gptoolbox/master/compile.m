@@ -36,12 +36,14 @@ depsBuild = tempname;
 mkdir(depsBuild);
 cleanupDeps = onCleanup(@() rmdir_silent(depsBuild)); %#ok<NASGU>
 
-% Per-arch dependency discovery. macOS: Homebrew prefix for CGAL + static
-% gmp/mpfr. Linux: CGAL/Boost from dnf (/usr), static gmp/mpfr built from
-% source here and passed explicitly. (Windows will pass a vcpkg toolchain —
-% handled when that arch is wired up.)
+% Per-arch dependency discovery. CGAL + Boost are prebuilt header-only on every
+% arch (Boost is never compiled): macOS gets them from Homebrew, Linux from dnf,
+% Windows by downloading the release headers. gmp/mpfr is the one real library:
+% brew on macOS, built from source on Linux, vcpkg (MSVC-compatible .lib) on
+% Windows.
 prefixArg = '';
 extraInc = {};   % extra -I flags prepended to the MEX include path (Linux gmp/mpfr)
+genArg   = '';   % CMake generator selection (Windows uses the VS generator)
 if ismac
     % Use Apple Clang on macOS (the native toolchain for CGAL/libigl/embree,
     % uniform libc++, and it can compile the Objective-C++ impaste). This
@@ -85,11 +87,33 @@ elseif isunix
     % Put our gmp.h/mpfr.h first: they must match the .a we just built (CGAL's
     % dnf deps may also drop older headers in /usr/include).
     extraInc = {['-I' fullfile(gmpmpfr, 'include')]};
-end
+elseif ispc
+    % Windows: MSVC 2022. embree has no MinGW support on Windows, and MSVC is
+    % MATLAB's native Windows MEX compiler, so the .mexw64 is ABI-correct
+    % against MATLAB's libmx. This overrides the channel-default MinGW that
+    % bundle_one selected. CGAL + Boost are fetched as header-only releases
+    % (never compiled); gmp/mpfr come from vcpkg as MSVC static .lib (installed
+    % in mip.yaml setup) via its CMake toolchain. El Topo is skipped on Windows
+    % (see the eltopo block below).
+    setup_mex_compilers('windows_x86_64', 'msvc');
+    genArg = ' -G "Visual Studio 17 2022" -A x64';
 
-genArg = '';
-if ispc
-    genArg = ' -G "MinGW Makefiles"';   % placeholder; Windows uses MSVC (TODO)
+    cgalRoot  = fetch_archive(['https://github.com/CGAL/cgal/releases/' ...
+        'download/v6.0.1/CGAL-6.0.1.tar.xz'], 'CGAL-6.0.1');
+    boostRoot = fetch_archive(['https://archives.boost.io/release/1.86.0/' ...
+        'source/boost_1_86_0.tar.gz'], 'boost_1_86_0');
+
+    vcpkg = strrep(getenv('VCPKG_INSTALLATION_ROOT'), '\', '/');
+    if isempty(vcpkg); vcpkg = 'C:/vcpkg'; end
+    % vcpkg toolchain provides the static gmp/mpfr; CGAL_DIR points find_package
+    % at the fetched CGAL; Boost is header-only via its include dir (force the
+    % FindBoost module since the fetched tree has no BoostConfig).
+    prefixArg = sprintf([ ...
+        ' -DCMAKE_TOOLCHAIN_FILE="%s/scripts/buildsystems/vcpkg.cmake"' ...
+        ' -DVCPKG_TARGET_TRIPLET=x64-windows-static-md' ...
+        ' -DCGAL_DIR="%s"' ...
+        ' -DBoost_INCLUDE_DIR="%s" -DBoost_NO_BOOST_CMAKE=ON'], ...
+        vcpkg, strrep(cgalRoot, '\', '/'), strrep(boostRoot, '\', '/'));
 end
 
 % feature('numcores'), not maxNumCompThreads: the latter is MATLAB's
@@ -106,10 +130,14 @@ if status ~= 0
 end
 
 % embree's internal archives (sys/math/...) build as deps of the `embree`
-% target; predicates/tetgen/triangle/ccd/tinyxml2 are explicit.
-buildCmd = sprintf(['cmake --build "%s" --config Release --target ' ...
-    'embree predicates tetgen triangle ccd tinyxml2 eltopo_release -j%d'], ...
-    depsBuild, nproc);
+% target; predicates/tetgen/triangle/ccd/tinyxml2 are explicit. El Topo is not
+% built on Windows (skipped — see the eltopo block below).
+targets = 'embree predicates tetgen triangle ccd tinyxml2';
+if ~ispc
+    targets = [targets ' eltopo_release'];
+end
+buildCmd = sprintf('cmake --build "%s" --config Release --target %s -j%d', ...
+    depsBuild, targets, nproc);
 fprintf('Building dependency libraries:\n  %s\n', buildCmd);
 [status, out] = system(buildCmd);
 fprintf('%s', out);
@@ -118,7 +146,9 @@ if status ~= 0
 end
 
 % ---- 2. Parse the manifest: include dirs + categorized lib paths --------
-manifest = fileread(fullfile(depsBuild, 'manifest.txt'));
+% Emitted per-config (manifest-<CONFIG>.txt) so the multi-config VS generator on
+% Windows resolves $<TARGET_FILE> per config; we always configure/build Release.
+manifest = fileread(fullfile(depsBuild, 'manifest-Release.txt'));
 incFlags = {};
 libsByCat = containers.Map();
 for ln = splitlines(string(manifest))'
@@ -145,8 +175,18 @@ incFlags = [extraInc, incFlags];   % Linux gmp/mpfr headers first (no-op elsewhe
 % global define), -DCY_NO_INTRIN_H (no x86 <immintrin.h> in cyCodeBase / no AVX
 % baking). Per-group -DWITH_CGAL/-DWITH_EMBREE/-DWITH_PREDICATES go with the
 % matching library link.
-common = [{'-largeArrayDims', 'CXXFLAGS=$CXXFLAGS -std=c++17', ...
-           '-DMEX', '-DCY_NO_INTRIN_H'}, incFlags, {'-outdir', mexDir}];
+% C++17 for libigl/CGAL. Flag syntax differs by compiler: gcc/clang take
+% -std=c++17 via CXXFLAGS; MSVC takes /std:c++17 via COMPFLAGS, plus /bigobj
+% (CGAL's heavy templates overflow MSVC's default object section limit) and the
+% NOMINMAX / _USE_MATH_DEFINES defines CGAL/Eigen need against <windows.h>.
+if ispc
+    stdFlags = {'COMPFLAGS=$COMPFLAGS /std:c++17 /bigobj', ...
+                '-DNOMINMAX', '-D_USE_MATH_DEFINES'};
+else
+    stdFlags = {'CXXFLAGS=$CXXFLAGS -std=c++17'};
+end
+common = [{'-largeArrayDims'}, stdFlags, {'-DMEX', '-DCY_NO_INTRIN_H'}, ...
+          incFlags, {'-outdir', mexDir}];
 
 % Groups mirror upstream mex/CMakeLists.txt compile_each() with all features
 % on. Each row: { extra-defines, {lib categories}, {source basenames} }.
@@ -206,16 +246,21 @@ end
 % self-contained as MATLAB provides them). The .a precedes the BLAS so the
 % linker resolves eltopo's references; <eltopo.h> is already in incFlags via the
 % libeltopo target in the manifest.
-eltopoLib = libsByCat('eltopo');
-if ismac
-    blasArgs = {'LDFLAGS=$LDFLAGS -framework Accelerate'};
-else
-    blasArgs = {'-lmwlapack', '-lmwblas'};
+% Skipped on Windows: El Topo's 2015-era C++ and its configure-time
+% find_package(BLAS) don't play well with MSVC, and it's a single niche MEX, so
+% Windows ships without it (the deps build above also omits eltopo_release).
+if ~ispc
+    eltopoLib = libsByCat('eltopo');
+    if ismac
+        blasArgs = {'LDFLAGS=$LDFLAGS -framework Accelerate'};
+    else
+        blasArgs = {'-lmwlapack', '-lmwblas'};
+    end
+    fprintf('  mex eltopo\n');
+    mex(common{:}, '-output', 'eltopo', fullfile(mexDir, 'eltopo.cpp'), ...
+        eltopoLib{:}, blasArgs{:});
+    nBuilt = nBuilt + 1;
 end
-fprintf('  mex eltopo\n');
-mex(common{:}, '-output', 'eltopo', fullfile(mexDir, 'eltopo.cpp'), ...
-    eltopoLib{:}, blasArgs{:});
-nBuilt = nBuilt + 1;
 
 % impaste (macOS only): Objective-C++ clipboard paste, two sources
 % (impaste.cpp + paste.mm) linking the Cocoa/Foundation system frameworks
@@ -279,5 +324,24 @@ fprintf('  [%s]\n', what);
 fprintf('%s', out);
 if st ~= 0
     error('gptoolbox:linuxDeps', '%s failed (exit %d)', what, st);
+end
+end
+
+
+function root = fetch_archive(url, dirName)
+% Download a source/header archive and extract it; return the path to its
+% top-level <dirName> directory. Used on Windows to fetch the header-only CGAL
+% and Boost releases (never compiled). Windows ships curl.exe and a bsdtar
+% (tar.exe) that handles .tar.gz and .tar.xz.
+work = tempname;
+mkdir(work);
+[~, ~, ext] = fileparts(url);
+arc = fullfile(work, ['src' ext]);
+run_or_error(sprintf('curl -fL --retry 5 -o "%s" "%s"', arc, url), ...
+    ['download ' dirName]);
+run_or_error(sprintf('tar -xf "%s" -C "%s"', arc, work), ['extract ' dirName]);
+root = fullfile(work, dirName);
+if ~isfolder(root)
+    error('gptoolbox:fetchArchive', 'Expected %s after extracting %s', root, url);
 end
 end
