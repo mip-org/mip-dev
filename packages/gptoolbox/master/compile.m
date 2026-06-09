@@ -133,8 +133,10 @@ end
 % target; predicates/tetgen/triangle/ccd/tinyxml2 are explicit. El Topo is not
 % built on Windows (skipped — see the eltopo block below).
 targets = 'embree predicates tetgen triangle ccd tinyxml2';
-if ~ispc
-    targets = [targets ' eltopo_release'];
+if ispc
+    targets = [targets ' eltopo_msvc'];     % our own MSVC target (see CMakeLists.txt)
+else
+    targets = [targets ' eltopo_release'];  % eltopo3d's gcc/clang target
 end
 buildCmd = sprintf('cmake --build "%s" --config Release --target %s -j%d', ...
     depsBuild, targets, nproc);
@@ -256,28 +258,25 @@ for g = 1:size(groups, 1)
     end
 end
 % El Topo is handled on its own: it needs BLAS/LAPACK, which don't fit the
-% category->lib model. Its BLAS interface is platform-gated in eltopo3d: macOS
-% uses CBLAS (cblas_*), elsewhere it sets -DUSE_FORTRAN_BLAS (daxpy_, ...). So
-% on macOS link Accelerate (provides CBLAS, OS-framework -> self-contained);
-% off-macOS link MATLAB's Fortran BLAS/LAPACK (-lmwlapack/-lmwblas, also
-% self-contained as MATLAB provides them). The .a precedes the BLAS so the
-% linker resolves eltopo's references; <eltopo.h> is already in incFlags via the
-% libeltopo target in the manifest.
-% Skipped on Windows: El Topo's 2015-era C++ and its configure-time
-% find_package(BLAS) don't play well with MSVC, and it's a single niche MEX, so
-% Windows ships without it (the deps build above also omits eltopo_release).
-if ~ispc
-    eltopoLib = libsByCat('eltopo');
-    if ismac
-        blasArgs = {'LDFLAGS=$LDFLAGS -framework Accelerate'};
-    else
-        blasArgs = {'-lmwlapack', '-lmwblas'};
-    end
-    fprintf('  mex eltopo\n');
-    mex(common{:}, '-output', 'eltopo', fullfile(mexDir, 'eltopo.cpp'), ...
-        eltopoLib{:}, blasArgs{:});
-    nBuilt = nBuilt + 1;
+% category->lib model. Its BLAS interface is platform-gated: macOS uses CBLAS
+% (cblas_*), elsewhere it uses -DUSE_FORTRAN_BLAS (daxpy_, ...). So on macOS link
+% Accelerate (provides CBLAS, OS-framework -> self-contained); off-macOS link
+% MATLAB's Fortran BLAS/LAPACK (-lmwlapack/-lmwblas, also self-contained as
+% MATLAB provides them -- MATLAB's Windows Fortran ABI is MWF77_UNDERSCORE1,
+% matching daxpy_, same as Linux). The .a/.lib precedes the BLAS so the linker
+% resolves eltopo's references; <eltopo.h> is already in incFlags via the
+% libeltopo target in the manifest. On Windows libeltopo is our own MSVC target
+% (eltopo_msvc; see CMakeLists.txt) since eltopo3d's CMakeLists is gcc/clang-only.
+eltopoLib = libsByCat('eltopo');
+if ismac
+    blasArgs = {'LDFLAGS=$LDFLAGS -framework Accelerate'};
+else
+    blasArgs = {'-lmwlapack', '-lmwblas'};
 end
+fprintf('  mex eltopo\n');
+mex(common{:}, '-output', 'eltopo', fullfile(mexDir, 'eltopo.cpp'), ...
+    eltopoLib{:}, blasArgs{:});
+nBuilt = nBuilt + 1;
 
 % impaste (macOS only): Objective-C++ clipboard paste, two sources
 % (impaste.cpp + paste.mm) linking the Cocoa/Foundation system frameworks

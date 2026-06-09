@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): build El Topo too (previously skipped). eltopo3d's own
+  `CMakeLists.txt` is gcc/clang-only — it hardcodes `-std=c++11`/`-Wall`/`-fPIC`
+  into `CMAKE_CXX_FLAGS` and calls `find_package(BLAS REQUIRED)`, which fails with
+  no system BLAS — so on Windows build `libeltopo` ourselves from the same source
+  globs as an MSVC static target (`eltopo_msvc`, aliased to `libeltopo`) with
+  `NO_GUI` + `USE_FORTRAN_BLAS` and no `find_package(BLAS)`; non-Windows still
+  uses eltopo3d's CMake. El Topo shipped VS projects historically (`vs_files/`),
+  so the source is MSVC-buildable. `compile.m` now builds the `eltopo` MEX on
+  Windows linking MATLAB's `-lmwlapack`/`-lmwblas` (MATLAB's Windows Fortran ABI
+  is `MWF77_UNDERSCORE1`, matching the `USE_FORTRAN_BLAS` `daxpy_` names, as on
+  Linux). Windows now ships the full MEX set except the macOS-only `impaste`.
+
 - `build-package.yml` (Windows strip): rename the toolchain trees with
   `[System.IO.Directory]::Move` (a metadata-only Win32 `MoveFile` for a
   same-volume rename) instead of `Move-Item`, which falls back to a recursive

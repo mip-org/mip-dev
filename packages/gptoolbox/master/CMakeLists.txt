@@ -78,23 +78,54 @@ if(WIN32 AND TARGET ccd)
 endif()
 
 # --- El Topo (eltopo MEX) -------------------------------------------------
-# Pin mirrors gptoolbox/mex/CMakeLists.txt. eltopo3d adds -march=native via
-# check_cxx_compiler_flag(COMPILER_SUPPORTS_MARCH_NATIVE) -- which would bake
-# the build host's CPU ISA into the binary and crash on older end-user CPUs.
-# Pre-seed that cache var OFF so the check is skipped and the flag never added.
-# eltopo links BLAS/LAPACK; compile.m satisfies them with MATLAB's
-# -lmwlapack/-lmwblas at the mex link (no external/bundled BLAS).
-# Skipped on Windows (2015-era C++ + find_package(BLAS) fight MSVC; one niche
-# MEX). compile.m omits the eltopo MEX and its build target there too.
-if(NOT WIN32)
-  set(COMPILER_SUPPORTS_MARCH_NATIVE OFF CACHE BOOL "" FORCE)
-  FetchContent_Declare(eltopo
-    GIT_REPOSITORY https://github.com/alecjacobson/eltopo.git
-    GIT_TAG 3cf988aae467392d1066bdde0be3f54487a0ba2c)
-  FetchContent_GetProperties(eltopo)
-  if(NOT eltopo_POPULATED)
-    FetchContent_Populate(eltopo)
+# Pin mirrors gptoolbox/mex/CMakeLists.txt. eltopo links BLAS/LAPACK; compile.m
+# satisfies them with MATLAB's -lmwlapack/-lmwblas at the mex link (no
+# external/bundled BLAS).
+#
+# eltopo3d's own CMakeLists adds -march=native via
+# check_cxx_compiler_flag(COMPILER_SUPPORTS_MARCH_NATIVE) -- which would bake the
+# build host's CPU ISA into the binary and crash on older end-user CPUs. Pre-seed
+# that cache var OFF so the check is skipped and the flag never added.
+set(COMPILER_SUPPORTS_MARCH_NATIVE OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(eltopo
+  GIT_REPOSITORY https://github.com/alecjacobson/eltopo.git
+  GIT_TAG 3cf988aae467392d1066bdde0be3f54487a0ba2c)
+FetchContent_GetProperties(eltopo)
+if(NOT eltopo_POPULATED)
+  FetchContent_Populate(eltopo)
+  if(NOT WIN32)
+    # gcc/clang: eltopo3d's CMakeLists builds cleanly (produces target
+    # eltopo_release, aliased to libeltopo).
     add_subdirectory(${eltopo_SOURCE_DIR}/eltopo3d ${eltopo_BINARY_DIR})
+  else()
+    # Windows/MSVC: eltopo3d's CMakeLists is gcc/clang-only -- it hardcodes
+    # -std=c++11/-Wall/-fPIC into CMAKE_CXX_FLAGS and does find_package(BLAS
+    # REQUIRED), which fails with no system BLAS. So build libeltopo ourselves
+    # from the same source globs with MSVC-friendly settings. El Topo historically
+    # shipped VS projects (vs_files/ in the repo), so the source is MSVC-buildable.
+    # No BLAS is linked here -- the eltopo MEX links MATLAB's -lmwlapack/-lmwblas
+    # in compile.m. NO_GUI drops the GLUT/OpenGL viewer; USE_FORTRAN_BLAS selects
+    # the daxpy_-style interface matching MATLAB's Fortran BLAS (as on Linux).
+    set(_eltopo3d "${eltopo_SOURCE_DIR}/eltopo3d")
+    file(GLOB ELTOPO_SRC
+      "${_eltopo3d}/*.cpp"
+      "${_eltopo3d}/../common/*.cpp"
+      "${_eltopo3d}/../common/tunicate/*.cpp"
+      "${_eltopo3d}/../common/newsparse/*.cpp")
+    # Real target eltopo_msvc (parity with eltopo3d's eltopo_release), aliased to
+    # libeltopo so the manifest's $<TARGET_FILE:libeltopo> resolves on every arch.
+    add_library(eltopo_msvc STATIC ${ELTOPO_SRC})
+    add_library(libeltopo ALIAS eltopo_msvc)
+    set_property(TARGET eltopo_msvc PROPERTY CXX_STANDARD 17)
+    target_include_directories(eltopo_msvc PUBLIC
+      "${_eltopo3d}"
+      "${_eltopo3d}/../common"
+      "${_eltopo3d}/../common/tunicate"
+      "${_eltopo3d}/../common/newsparse"
+      "${_eltopo3d}/../common/meshes")
+    target_compile_definitions(eltopo_msvc PRIVATE
+      NO_GUI USE_FORTRAN_BLAS __LITTLE_ENDIAN__ NOMINMAX _USE_MATH_DEFINES)
+    target_compile_options(eltopo_msvc PRIVATE /bigobj)
   endif()
 endif()
 
