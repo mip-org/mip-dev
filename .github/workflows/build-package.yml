@@ -554,9 +554,17 @@ jobs:
             "C:\Program Files\CMake",
             "C:\Program Files\Git\mingw64"
           )
+          # Fast path: [IO.Directory]::Move (Win32 MoveFile) is a metadata-only
+          # same-volume rename (~ms). PowerShell's Move-Item instead recursively
+          # copies the tree, which takes minutes on the multi-million-file Visual
+          # Studio dir — so use it only as the fallback if the atomic move throws
+          # (e.g. a cross-volume path or a quirk), preserving the prior behavior.
+          # Move-Item swallows its own errors; "Verify strip" below is the hard
+          # gate either way.
           foreach ($p in $paths) {
             if (Test-Path $p) {
-              Move-Item -Force -ErrorAction SilentlyContinue $p "$p.deleted"
+              try { [System.IO.Directory]::Move($p, "$p.deleted") }
+              catch { Move-Item -Force -ErrorAction SilentlyContinue $p "$p.deleted" }
             }
           }
 

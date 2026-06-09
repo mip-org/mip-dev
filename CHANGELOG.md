@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `build-package.yml` (Windows strip): rename the toolchain trees with
+  `[System.IO.Directory]::Move` (a metadata-only Win32 `MoveFile` for a
+  same-volume rename) instead of `Move-Item`, which falls back to a recursive
+  copy of the whole tree and took minutes on the multi-million-file Visual
+  Studio dir. Falls back to `Move-Item` if the atomic move throws (e.g. a
+  cross-volume path), preserving the prior behavior; "Verify strip" remains the
+  hard gate. Applies to every Windows build (gptoolbox, fmm2d, sedumi).
+
 - gptoolbox (Windows): define `WIN32` for the MEX build. libigl's `Timer.h`
   (pulled in by the embree MEX via `EmbreeIntersector`) guards its `<windows.h>`
   include on bare `#ifdef WIN32` and otherwise includes POSIX `<sys/time.h>`,
