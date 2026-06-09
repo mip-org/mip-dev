@@ -2,15 +2,20 @@
 
 ## Unreleased
 
-- gptoolbox (Windows): define `CCD_STATIC_DEFINE` and `EMBREE_STATIC_LIB` when
-  compiling the MEX. libccd and embree decorate their public API with
-  `__declspec(dllimport)` by default; both are linked as static libs, but the
-  MEX are built by `mex()` (not CMake), so they don't inherit the static
-  targets' compile definitions and MSVC looked for `__imp_*` import stubs a
-  static lib lacks (`gjk_intersect` failed with unresolved
-  `__imp_ccdGJKIntersect`; the embree MEX would have followed). Added both
-  defines to the Windows `mex()` flags — a no-op on GCC/Clang (no import stubs)
-  and harmless to MEX that include neither header.
+- gptoolbox (Windows): fix libccd/embree static linkage under MSVC. Both
+  decorate their public API with `__declspec(dllimport)` unless
+  `CCD_STATIC_DEFINE` / `EMBREE_STATIC_LIB` are defined, and we link both as
+  static libs. Two sides needed it: (1) the consuming MEX — added both defines
+  to the Windows `mex()` flags, since the MEX compile via `mex()` (not CMake)
+  and don't inherit the static targets' compile definitions (`gjk_intersect`
+  failed with unresolved `__imp_ccdGJKIntersect`); (2) the libccd *library*
+  build — its CMake never defines `CCD_STATIC_DEFINE` for a static build, so even
+  `ccd.lib`'s own objects referenced their cross-TU API via `__imp_*`
+  (`ccd.obj -> __imp_ccdVec3PointSegmentDist2`, 12 unresolved), fixed with
+  `target_compile_definitions(ccd PUBLIC CCD_STATIC_DEFINE)` in the deps
+  `CMakeLists.txt`. embree's CMake already handles its own static build. All
+  Windows-only — a no-op on GCC/Clang (no import stubs), which is why
+  macOS/Linux linked fine without any of this.
 
 - gptoolbox (Windows): also make the host triplet release-only. gmp's
   `{"name":"gmp","host":true}` self-dependency builds gmp for the *host* triplet

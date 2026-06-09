@@ -65,6 +65,18 @@ FetchContent_Declare(libccd
   GIT_TAG v2.1)
 FetchContent_MakeAvailable(libccd)
 
+# libccd's ccd_export.h defaults CCD_EXPORT to __declspec(dllimport) unless
+# CCD_STATIC_DEFINE is defined, and libccd's CMake never sets it for a static
+# build. On MSVC that makes even ccd.lib's OWN objects reference their cross-TU
+# API via __imp_* (e.g. ccd.obj -> __imp_ccdVec3PointSegmentDist2), so the static
+# lib has unresolved imports (LNK2019). Define it on the static target. Windows
+# only (GCC/Clang have no import stubs, so macOS/Linux link fine without it).
+# compile.m passes the same define to the consuming MEX, which link via mex()
+# (not CMake) and so don't inherit this PUBLIC interface define.
+if(WIN32 AND TARGET ccd)
+  target_compile_definitions(ccd PUBLIC CCD_STATIC_DEFINE)
+endif()
+
 # --- El Topo (eltopo MEX) -------------------------------------------------
 # Pin mirrors gptoolbox/mex/CMakeLists.txt. eltopo3d adds -march=native via
 # check_cxx_compiler_flag(COMPILER_SUPPORTS_MARCH_NATIVE) -- which would bake
