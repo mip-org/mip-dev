@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): define `WIN32` for the MEX build. libigl's `Timer.h`
+  (pulled in by the embree MEX via `EmbreeIntersector`) guards its `<windows.h>`
+  include on bare `#ifdef WIN32` and otherwise includes POSIX `<sys/time.h>`,
+  which MSVC lacks (`C1083` on `bone_visible_embree`). MSVC defines `_WIN32` but
+  not `WIN32` (MinGW defines both), so add `-DWIN32` to the Windows `mex()`
+  flags — the conventional Windows macro, safe for the other deps.
+
 - gptoolbox (Windows): fix libccd/embree static linkage under MSVC. Both
   decorate their public API with `__declspec(dllimport)` unless
   `CCD_STATIC_DEFINE` / `EMBREE_STATIC_LIB` are defined, and we link both as

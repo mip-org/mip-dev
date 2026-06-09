@@ -180,6 +180,13 @@ incFlags = [extraInc, incFlags];   % Linux gmp/mpfr headers first (no-op elsewhe
 % (CGAL's heavy templates overflow MSVC's default object section limit) and the
 % NOMINMAX / _USE_MATH_DEFINES defines CGAL/Eigen need against <windows.h>.
 if ispc
+    % WIN32: MSVC defines _WIN32 but not bare WIN32 (MinGW defines both). libigl's
+    % Timer.h (pulled in by the embree MEX via EmbreeIntersector) guards its
+    % <windows.h> include on `#ifdef WIN32` and otherwise includes POSIX
+    % <sys/time.h>, which MSVC lacks (C1083 on bone_visible_embree). Define WIN32
+    % so it takes the Windows path; it's the conventional Windows macro (MSVC
+    % project defaults define it) so it's safe for the other deps too.
+    %
     % CCD_STATIC_DEFINE / EMBREE_STATIC_LIB: libccd and embree decorate their
     % public API with __declspec(dllimport) by default. We link both as static
     % libs, but the MEX are compiled by mex() (not CMake), so they don't inherit
@@ -190,7 +197,7 @@ if ispc
     % are a no-op off-Windows, and they're harmless to MEX that include neither
     % header. See BUILD_NOTES.md.
     stdFlags = {'COMPFLAGS=$COMPFLAGS /std:c++17 /bigobj', ...
-                '-DNOMINMAX', '-D_USE_MATH_DEFINES', ...
+                '-DNOMINMAX', '-D_USE_MATH_DEFINES', '-DWIN32', ...
                 '-DCCD_STATIC_DEFINE', '-DEMBREE_STATIC_LIB'};
 else
     stdFlags = {'CXXFLAGS=$CXXFLAGS -std=c++17'};
