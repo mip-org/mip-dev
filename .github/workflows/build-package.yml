@@ -256,7 +256,7 @@ jobs:
             echo "Nothing to bundle (arch mismatch or already published)."
           fi
 
-      - name: Prepare vcpkg binary cache dir (Windows)
+      - name: Prepare vcpkg environment (Windows)
         if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true'
         shell: bash
         run: |
@@ -268,6 +268,18 @@ jobs:
           dir="$GITHUB_WORKSPACE/vcpkg-archives"
           mkdir -p "$dir"
           echo "VCPKG_DEFAULT_BINARY_CACHE=$(cygpath -w "$dir")" >> "$GITHUB_ENV"
+
+          # Channel-shared overlay triplets, applied to every `vcpkg install` a
+          # package runs (env var = the --overlay-triplets flag, globally). The
+          # files in vcpkg-triplets/ shadow vcpkg's builtin triplets of the SAME
+          # name (x64-windows-static-md, x64-windows) and add VCPKG_BUILD_TYPE
+          # release, so vcpkg skips the unused debug half of each port (~halves a
+          # cold build). Harmless to any port: an overlay triplet only applies
+          # when its filename matches the requested triplet name, so a package
+          # asking for some other triplet silently gets the builtin. Channel-level
+          # (not per-package) keeps ABI hashes identical so packages share the
+          # persisted binary cache above; the cache key hashes vcpkg-triplets/.
+          echo "VCPKG_OVERLAY_TRIPLETS=$(cygpath -w "$GITHUB_WORKSPACE/vcpkg-triplets")" >> "$GITHUB_ENV"
 
       - name: Restore vcpkg cache (Windows)
         id: vcpkg_cache

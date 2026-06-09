@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- `build-package.yml`: apply the channel's release-only vcpkg overlay triplets
+  globally via `VCPKG_OVERLAY_TRIPLETS` (set alongside `VCPKG_DEFAULT_BINARY_CACHE`
+  in the Windows vcpkg prep step) instead of a per-package `--overlay-triplets`
+  flag. gptoolbox's `mip.yaml` setup drops the flag accordingly. An overlay triplet
+  only applies when its filename matches the requested triplet name, so this is
+  harmless to ports using other triplets, and future Windows+vcpkg packages get the
+  debug-skipping triplets (and shared binary cache) automatically.
+
 - docs: refresh gptoolbox `BUILD_NOTES.md` for the now-shipped Windows build —
   El Topo built (own `eltopo_msvc` target), the vcpkg release-only triplet +
   binary cache, and a new "Windows / MSVC specifics" section capturing the
