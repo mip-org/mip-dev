@@ -272,7 +272,7 @@ jobs:
       - name: Restore vcpkg cache (Windows)
         id: vcpkg_cache
         if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true'
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           path: vcpkg-archives
           # vcpkg restores each port from inside this dir by its own ABI hash, so
@@ -300,7 +300,7 @@ jobs:
         # placing it before Bundle means Bundle's outcome can't drop the cache.
         # Skip when the restore was an exact hit (nothing new to save).
         if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true' && steps.vcpkg_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: vcpkg-archives
           key: ${{ steps.vcpkg_cache.outputs.cache-primary-key }}

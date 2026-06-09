@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- `build-package.yml`: bump the vcpkg cache steps from `actions/cache/restore@v4`
+  / `actions/cache/save@v4` to `@v5` (Node 24 runtime; Node 20 is deprecated).
+  The channel's other actions (`checkout@v5`, `setup-python@v6`,
+  `upload-artifact@v7`, …) are already on Node 24-era versions.
+
 - gptoolbox (Windows): build El Topo too (previously skipped). eltopo3d's own
   `CMakeLists.txt` is gcc/clang-only — it hardcodes `-std=c++11`/`-Wall`/`-fPIC`
   into `CMAKE_CXX_FLAGS` and calls `find_package(BLAS REQUIRED)`, which fails with
