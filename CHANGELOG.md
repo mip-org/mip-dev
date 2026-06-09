@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): also make the host triplet release-only. gmp's
+  `{"name":"gmp","host":true}` self-dependency builds gmp for the *host* triplet
+  (`x64-windows`), which the target-only overlay didn't cover, so host gmp still
+  built debug+release. Added `vcpkg-triplets/x64-windows.cmake` (the builtin host
+  triplet + `VCPKG_BUILD_TYPE release`); `--overlay-triplets` already points at
+  the whole `vcpkg-triplets/` dir, so vcpkg picks it up.
+
 - gptoolbox (Windows): two fixes found in CI. (1) The deps `CMakeLists.txt`
   emitted `L eltopo $<TARGET_FILE:libeltopo>` into the manifest unconditionally,
   but El Topo is skipped on Windows (`libeltopo` target absent), so
