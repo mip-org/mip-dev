@@ -269,9 +269,10 @@ jobs:
           mkdir -p "$dir"
           echo "VCPKG_DEFAULT_BINARY_CACHE=$(cygpath -w "$dir")" >> "$GITHUB_ENV"
 
-      - name: Cache vcpkg binary packages (Windows)
+      - name: Restore vcpkg cache (Windows)
+        id: vcpkg_cache
         if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: vcpkg-archives
           # vcpkg restores each port from inside this dir by its own ABI hash, so
@@ -279,7 +280,7 @@ jobs:
           # wrong binary. Bust the key when any package's deps or the vcpkg
           # triplets change; restore-keys falls back to the latest prior cache so
           # unchanged ports still hit.
-          key: vcpkg-archives-windows-${{ hashFiles('packages/**/mip.yaml', 'packages/**/vcpkg-triplets/*.cmake') }}
+          key: vcpkg-archives-windows-${{ hashFiles('packages/**/mip.yaml', 'vcpkg-triplets/*.cmake') }}
           restore-keys: |
             vcpkg-archives-windows-
 
@@ -289,6 +290,20 @@ jobs:
         run: |
           python scripts/package_setup.py \
             --architecture "${{ inputs.architecture }}"
+
+      - name: Save vcpkg cache (Windows)
+        # Save right after the install populates the cache dir, NOT via the
+        # combined actions/cache post-step: that only saves on job SUCCESS, so a
+        # later Bundle failure (the common case while stabilizing) discards the
+        # freshly-built gmp/mpfr and re-pays the ~25 min cold build next time.
+        # A plain `if:` runs this only when setup (and prior steps) succeeded, and
+        # placing it before Bundle means Bundle's outcome can't drop the cache.
+        # Skip when the restore was an exact hit (nothing new to save).
+        if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true' && steps.vcpkg_cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: vcpkg-archives
+          key: ${{ steps.vcpkg_cache.outputs.cache-primary-key }}
 
       - name: Set up MATLAB
         if: steps.prepared_check.outputs.has_prepared == 'true'

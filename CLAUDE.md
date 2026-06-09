@@ -13,7 +13,8 @@ Builds run one `(package, architecture)` pair at a time via GitHub Actions.
 - `packages/<name>/<release>/` — package definitions.
 - `scripts/` — Python/MATLAB helpers used by the workflows.
 - `.github/workflows/` — build, scheduled, and issue-driven build triggers.
-- `mexopts/`, `site/` — MEX compiler configs and the channel site.
+- `mexopts/`, `vcpkg-triplets/`, `site/` — MEX compiler configs, shared vcpkg
+  overlay triplets (Windows native-dep builds), and the channel site.
 
 ## Conventions
 

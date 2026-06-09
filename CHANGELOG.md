@@ -2,15 +2,27 @@
 
 ## Unreleased
 
-- gptoolbox (Windows): speed up the vcpkg gmp/mpfr install. A release-only
-  overlay triplet (`packages/gptoolbox/master/vcpkg-triplets/`, shadowing the
-  builtin `x64-windows-static-md` with `VCPKG_BUILD_TYPE release`) stops vcpkg
-  building the unused debug variant of each port, ~halving the cold build, and
+- gptoolbox (Windows): two fixes found in CI. (1) The deps `CMakeLists.txt`
+  emitted `L eltopo $<TARGET_FILE:libeltopo>` into the manifest unconditionally,
+  but El Topo is skipped on Windows (`libeltopo` target absent), so
+  `file(GENERATE)` failed with "No target libeltopo" — now guarded with
+  `if(TARGET libeltopo)`. (2) The vcpkg binary cache used the combined
+  `actions/cache`, which only saves on job success, so a Bundle failure
+  discarded the freshly-built gmp/mpfr; split into `actions/cache/restore`
+  before setup + `actions/cache/save` right after it, so the cache persists once
+  the install succeeds regardless of whether Bundle later fails.
+
+- gptoolbox (Windows): speed up the vcpkg gmp/mpfr install. A channel-level
+  release-only overlay triplet (`vcpkg-triplets/`, shadowing the builtin
+  `x64-windows-static-md` with `VCPKG_BUILD_TYPE release`) stops vcpkg building
+  the unused debug variant of each port, ~halving the cold build, and
   `build-package.yml` now persists vcpkg's binary cache across Windows runs via
   `actions/cache` over `VCPKG_DEFAULT_BINARY_CACHE` (warm runs restore gmp/mpfr
   instead of rebuilding). The triplet keeps the builtin's name, so `compile.m`'s
   `VCPKG_TARGET_TRIPLET` is unchanged; vcpkg still validates each port by ABI
-  hash, so the cache can't serve stale binaries.
+  hash, so the cache can't serve stale binaries. It lives at the channel level
+  (not per-package) so every Windows+vcpkg package gets an identical triplet ABI
+  and shares the cached gmp/mpfr.
 
 - Linux `g++` mexopts: guard `-lstdc++` with `-Wl,--push-state,--no-as-needed
   ... -Wl,--pop-state`, mirroring the existing `gcc` mexopts fix. The

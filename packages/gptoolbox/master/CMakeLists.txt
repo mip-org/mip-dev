@@ -144,8 +144,14 @@ endforeach()
 # reference to __gmp*"). macOS's linker is multi-pass and tolerates either order.
 string(APPEND _m "L cgal ${MPFR_STATIC}\n")
 string(APPEND _m "L cgal ${GMP_STATIC}\n")
-# El Topo static lib (eltopo3d's target is aliased to libeltopo).
-string(APPEND _m "L eltopo $<TARGET_FILE:libeltopo>\n")
+# El Topo static lib (eltopo3d's target is aliased to libeltopo). Skipped on
+# Windows (the eltopo FetchContent is gated under NOT WIN32 above), so guard on
+# the target's existence — otherwise $<TARGET_FILE:libeltopo> errors in
+# file(GENERATE) ("No target libeltopo"). compile.m only reads the eltopo
+# category off-Windows, matching this.
+if(TARGET libeltopo)
+  string(APPEND _m "L eltopo $<TARGET_FILE:libeltopo>\n")
+endif()
 
 # Per-config output: on the multi-config VS generator, $<CONFIG> makes
 # file(GENERATE) emit one manifest per config, each with $<TARGET_FILE> resolved

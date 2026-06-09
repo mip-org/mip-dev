@@ -30,7 +30,8 @@ builds:
         # CGAL + Boost are fetched header-only by compile.m; vcpkg supplies the
         # one real dependency, static gmp/mpfr, as MSVC-compatible .lib. The
         # triplet must match compile.m's VCPKG_TARGET_TRIPLET (static libs,
-        # dynamic CRT). The overlay triplet shadows the builtin with
-        # VCPKG_BUILD_TYPE=release so vcpkg skips the unused debug variant of
-        # each port (~halves the cold build). cmake ships on windows-latest.
-        - "vcpkg install gmp:x64-windows-static-md mpfr:x64-windows-static-md --overlay-triplets=packages/gptoolbox/master/vcpkg-triplets"
+        # dynamic CRT). The channel-shared overlay triplet (vcpkg-triplets/)
+        # shadows the builtin with VCPKG_BUILD_TYPE=release so vcpkg skips the
+        # unused debug variant of each port (~halves the cold build). cmake ships
+        # on windows-latest.
+        - "vcpkg install gmp:x64-windows-static-md mpfr:x64-windows-static-md --overlay-triplets=vcpkg-triplets"
