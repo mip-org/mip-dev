@@ -49,7 +49,7 @@ no Boost build and no ABI concern for them.
 | Arch | compiler | how |
 |---|---|---|
 | macos_arm64 | `clang++.xml` (Apple Clang, libc++) | `compile.m` selects clang via `setup_mex_compilers('macos_arm64','clang')` — native toolchain for CGAL/libigl/embree; overrides the channel-default gcc |
-| linux_x86_64 | `gcc.xml` (ubi8 GCC 8.5, libstdc++) | channel default |
+| linux_x86_64 | `gcc.xml` (gcc-toolset-10, GCC 10.3, libstdc++) | channel default |
 | windows_x86_64 | **MSVC 2022** | `compile.m` re-selects MSVC, overriding the channel's MinGW default (gptoolbox has no Fortran; MinGW gcc 8.1 is too old for CGAL 6 / Boost 1.86 / embree 4) |
 
 ## Dependencies — per architecture
@@ -84,7 +84,7 @@ built with the same compiler `mex()` uses (ABI rule above).
 
 → self-contained MEX; nothing bundled. Deps build dominated by embree (~5–8 min).
 
-### linux_x86_64 — `mex` compiler: `gcc` (ubi8 GCC 8.5, glibc 2.28)
+### linux_x86_64 — `mex` compiler: `gcc` (gcc-toolset-10 GCC 10.3, glibc 2.28)
 
 | Library | Linkage | Source | Build time (est.) |
 |---|---|---|---|
@@ -100,8 +100,8 @@ built with the same compiler `mex()` uses (ABI rule above).
 | triangle | **static** | from source | ~5 s |
 | libccd | **static** | from source | ~10 s |
 | tinyxml2 | **static** | from source | ~5 s |
-| embree | **static** (`INTERNAL` tasking → no TBB) | from source ⚠ gcc 8.5 risk | **~5–8 min** |
-| El Topo | **static** | from source ⚠ | ~30 s |
+| embree | **static** (`INTERNAL` tasking → no TBB) | from source (gcc-toolset-10) | **~5–8 min** |
+| El Topo | **static** | from source | ~30 s |
 | libgomp | **dynamic, BUNDLED** (leaf `.so`) | *only if* libigl pulls OpenMP; MATLAB doesn't ship it (same as fmm2d) | — (install) |
 | MATLAB libmx/libmex | dynamic (basename) | MATLAB-provided | — |
 
@@ -118,21 +118,27 @@ only possibly-bundled lib is the `libgomp` leaf. Deps build ≈ embree (~5–8 m
 | cyCodeBase | header-only | from source (FetchContent, via libigl) | — (fetch) |
 | CGAL | header-only | prebuilt (`vcpkg`) | — (install, vcpkg first-build slow) |
 | Boost | header-only | prebuilt (`vcpkg`) | — (install, vcpkg first-build slow) |
-| GMP | **static** | prebuilt (`vcpkg`, static triplet) | — (install) |
-| MPFR | **static** | prebuilt (`vcpkg`, static triplet) | — (install) |
+| GMP | **static** | prebuilt (`vcpkg` `x64-windows-static-md`, release-only) | — (install, cached) |
+| MPFR | **static** | prebuilt (`vcpkg` `x64-windows-static-md`, release-only) | — (install, cached) |
 | predicates | **static** | from source (MSVC) | ~10 s |
 | tetgen | **static** | from source (MSVC) | ~20 s |
 | triangle | **static** | from source (MSVC) | ~10 s |
 | libccd | **static** | from source (MSVC) | ~15 s |
 | tinyxml2 | **static** | from source (MSVC) | ~10 s |
 | embree | **static** (`INTERNAL` tasking → no TBB) | from source (MSVC) | **~6–10 min** |
-| El Topo | **static** | from source (MSVC) ⚠ | ~45 s |
+| El Topo | **static** | from source — our own `eltopo_msvc` CMake target | ~45 s |
 | MATLAB libmx/libmex | dynamic (import lib) | MATLAB-provided | — |
 | MSVC runtime (VCRUNTIME/MSVCP) | dynamic | system / MATLAB-provided (System32, survives strip) | — |
 
-(`vcpkg` itself builds CGAL/Boost/gmp/mpfr from source on a cold cache — minutes
-to tens of minutes the first time — though they're "prebuilt" from our build's
-perspective once vcpkg has them; binary caching makes repeats fast.)
+(`vcpkg` builds CGAL/Boost/gmp/mpfr from source on a cold cache — minutes to
+tens of minutes the first time. We cut this two ways: a **release-only overlay
+triplet** (channel-level `vcpkg-triplets/x64-windows-static-md.cmake`, shadowing
+the builtin with `VCPKG_BUILD_TYPE release`) skips each port's unused debug
+build — including gmp's `{gmp, host:true}` self-dependency, which also builds for
+the host triplet `x64-windows` and is covered by a sibling `x64-windows.cmake`
+overlay — and `build-package.yml` persists vcpkg's binary cache across runs via
+`actions/cache` (saved right after setup, so a later Bundle failure can't drop
+it). Warm runs restore gmp/mpfr in seconds.)
 
 → self-contained MEX; only the MATLAB libs and the System32 MSVC runtime are
 dynamic, both present on any machine running MATLAB.
@@ -146,8 +152,10 @@ them (and the LGPL relink housekeeping) is cheap, and it avoids the
 ## Bundling & self-containment
 
 Everything is static or header-only or MATLAB-provided, so the MEX are
-**self-contained — nothing bundled**. Verified on macOS: the only dynamic deps
-across all built MEX are `@rpath/libmx`, `@rpath/libmex`, `/usr/lib/libSystem`.
+**self-contained — nothing bundled**. The strip-and-test CI job confirms this on
+every arch: it renames the toolchain away, then loads and runs the MEX. (On
+macOS the only dynamic deps across all built MEX are `@rpath/libmx`,
+`@rpath/libmex`, `/usr/lib/libSystem`.)
 
 - **Linux:** static everything → the glibc-2.28 gate trivially passes (all
   built in the ubi8/glibc-2.28 container). **One possible exception:** if
@@ -174,25 +182,53 @@ across all built MEX are `@rpath/libmx`, `@rpath/libmex`, `/usr/lib/libSystem`.
   slowest (CGAL) files anyway. Header-only matches upstream; revisit only if
   per-build compile time becomes the bottleneck.
 
-## Deferred optimizations (do not block the initial landing)
+## Deferred optimizations
 
-- **Deps caching.** The dependency libs depend only on pinned versions (libigl
-  commit, embree 4.4, CGAL 6.x, libccd v2.1, …), never on gptoolbox or the
-  MATLAB version. The only slow build is embree. To amortize, cache the deps
-  build via **`actions/cache`** keyed on a pin-hash — **not** GitHub Releases
-  (those are the `.mhl` channel; a deps tarball there would break that
-  invariant). A separate `mip-org/gptoolbox-deps` repo is the alternative.
-  Either way the dep-build code is identical; caching only changes *when* it
-  runs.
+- **vcpkg binary cache — DONE (Windows).** Release-only overlay triplet +
+  `actions/cache` over `VCPKG_DEFAULT_BINARY_CACHE` (see the Windows table note).
+  The triplet is channel-level (`vcpkg-triplets/`) so a future Windows+vcpkg
+  package shares the cache (identical ABI). Caveat: triplet-only edits don't
+  auto-dispatch builds — `affected_builds.py` watches only `packages/`.
+- **CMake deps cache (embree) — still deferred.** embree is the remaining slow
+  build (~6–10 min, every arch). Caching the CMake deps dir would need a stable
+  build path (`compile.m` uses a random `tempname` today) and a pin-hash key —
+  and the key is the hard part: the libigl/embree pins live in gptoolbox's
+  *fetched* source (`mex/cmake/libigl.cmake`), and `recipe.yaml` tracks branch
+  `master`, not a commit, so a static `hashFiles` can't see upstream moves. A
+  correct key needs the resolved gptoolbox commit (or pinning gptoolbox). Use
+  **`actions/cache`**, **not** GitHub Releases (those are the `.mhl` channel).
 
-## Open risks to confirm on CI
+## Windows / MSVC specifics (all confirmed on CI)
 
-1. **embree 4.4 under GCC 8.5 (Linux ubi8):** embree is modern C++; if 8.5
-   can't build it, fall back to prebuilt embree v4.4.1 (glibc 2.27 ✓) bundled.
-2. **El Topo** under GCC 8.5 / MSVC (2015-era code): 1 function, droppable.
-3. **Windows vcpkg** CGAL/gmp/mpfr static triplet + MSVC mex link specifics.
-4. **`libgomp` on Linux:** bundle the leaf `.so` if it appears.
+The Windows build is green and feature-complete: **58 MEX**, the full set bar the
+macOS-only `impaste`. The non-obvious things MSVC needed, each found via the CI
+loop:
+
+- **Manifest per config.** The deps `CMakeLists.txt` emits `manifest-$<CONFIG>.txt`
+  (not a fixed name): the multi-config VS generator evaluates `file(GENERATE)`
+  for every config, so a fixed path carrying per-config `$<TARGET_FILE>` errors.
+  `compile.m` reads `manifest-Release.txt`.
+- **Static-lib consume defines.** libccd and embree decorate their API with
+  `__declspec(dllimport)` by default; linked static, the MEX (built by `mex()`,
+  not CMake, so they don't inherit the targets' compile defs) hit unresolved
+  `__imp_*`. Fix: `-DCCD_STATIC_DEFINE` (the libccd build **and** the MEX) and
+  `-DEMBREE_STATIC_LIB` (the MEX).
+- **`-DWIN32`.** MSVC defines `_WIN32` but not bare `WIN32`; libigl's `Timer.h`
+  guards `<windows.h>` on `WIN32` and otherwise pulls POSIX `<sys/time.h>`.
+- **El Topo.** Built from our own `eltopo_msvc` target (eltopo3d's CMake is
+  gcc/clang-only — hardcoded flags + `find_package(BLAS REQUIRED)`). Two source
+  fixups: `util.h`'s `lround`/`remainder` polyfills (`#ifdef _MSC_VER`) collide
+  with the modern CRT (renamed away); and its hand-rolled Fortran BLAS prototypes
+  (`daxpy_`) don't match Win64 MATLAB's **bare** exports (`daxpy`), so the 28
+  BLAS/LAPACK symbols are preprocessor-renamed `name_`→`name` on `eltopo_msvc`.
+  (Unix MATLAB exports the underscore form, so Linux/macOS link unchanged.)
+
+Previously-open risks, now resolved: embree builds under Linux gcc-toolset-10
+(GCC 10.3); `libgomp` on Linux is bundled as a leaf `.so` only if it appears
+(`scripts/bundle_runtime_libs`).
 
 ## Build sequence
 
-macOS (full set, header-only libigl) → Linux → Windows → CHANGELOG + push + CI.
+All three architectures are landed and published (macOS, Linux, Windows). The
+bring-up order was macOS → Linux → Windows; each `(package, arch)` builds
+independently via `build-package.yml`.

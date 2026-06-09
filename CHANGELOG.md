@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- docs: refresh gptoolbox `BUILD_NOTES.md` for the now-shipped Windows build —
+  El Topo built (own `eltopo_msvc` target), the vcpkg release-only triplet +
+  binary cache, and a new "Windows / MSVC specifics" section capturing the
+  static-define / `WIN32` / BLAS-naming / per-config-manifest gotchas. Also
+  corrected the Linux compiler to gcc-toolset-10 (GCC 10.3) and cleared the
+  resolved "open risks."
+
 - `build-package.yml`: bump the vcpkg cache steps from `actions/cache/restore@v4`
   / `actions/cache/save@v4` to `@v5` (Node 24 runtime; Node 20 is deprecated).
   The channel's other actions (`checkout@v5`, `setup-python@v6`,
