@@ -140,6 +140,18 @@ if(NOT eltopo_POPULATED)
       "${_eltopo3d}/../common/meshes")
     target_compile_definitions(eltopo_msvc PRIVATE
       NO_GUI USE_FORTRAN_BLAS __LITTLE_ENDIAN__ NOMINMAX _USE_MATH_DEFINES)
+    # USE_FORTRAN_BLAS makes El Topo call the trailing-underscore Fortran names
+    # (daxpy_), but Win64 MATLAB's libmwblas/libmwlapack export the BARE names
+    # (daxpy) -- the opposite of Linux/macOS MATLAB. Preprocessor-rename every
+    # BLAS/LAPACK symbol the wrappers declare (name_ -> name) so the lib's
+    # references bind to MATLAB's Windows BLAS at the eltopo MEX link.
+    target_compile_definitions(eltopo_msvc PRIVATE
+      dasum_=dasum daxpy_=daxpy dcopy_=dcopy ddot_=ddot dgemm_=dgemm
+      dgemv_=dgemv dnrm2_=dnrm2 dscal_=dscal dsdot_=dsdot dswap_=dswap
+      idamax_=idamax isamax_=isamax sasum_=sasum saxpy_=saxpy scopy_=scopy
+      sdot_=sdot sgemm_=sgemm sgemv_=sgemv snrm2_=snrm2 sscal_=sscal sswap_=sswap
+      dgelsd_=dgelsd dgesdd_=dgesdd dgesv_=dgesv dgetrf_=dgetrf dgetri_=dgetri
+      dsyev_=dsyev sgesv_=sgesv)
     target_compile_options(eltopo_msvc PRIVATE /bigobj)
   endif()
 endif()

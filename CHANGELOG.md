@@ -10,13 +10,16 @@
   `NO_GUI` + `USE_FORTRAN_BLAS` and no `find_package(BLAS)`; non-Windows still
   uses eltopo3d's CMake. El Topo shipped VS projects historically (`vs_files/`),
   so the source is MSVC-buildable. `compile.m` now builds the `eltopo` MEX on
-  Windows linking MATLAB's `-lmwlapack`/`-lmwblas` (MATLAB's Windows Fortran ABI
-  is `MWF77_UNDERSCORE1`, matching the `USE_FORTRAN_BLAS` `daxpy_` names, as on
-  Linux). One source fixup: `common/util.h` polyfills `lround`/`remainder` under
-  a bare `#ifdef _MSC_VER`, which collide with modern MSVC's CRT declarations
-  (`C2556`/`C2371`/`C2491`); the CMake step renames those two definitions out of
-  the way in our FetchContent copy so the calls bind to the CRT. Windows now
-  ships the full MEX set except the macOS-only `impaste`.
+  Windows linking MATLAB's `-lmwlapack`/`-lmwblas`. Two MSVC-specific fixups were
+  needed: (1) Win64 MATLAB's BLAS/LAPACK export the *bare* Fortran names
+  (`daxpy`), opposite to Linux/macOS (`daxpy_`), but `USE_FORTRAN_BLAS` emits the
+  underscore form — so the deps CMake preprocessor-renames every BLAS/LAPACK
+  symbol the wrappers declare (`daxpy_`→`daxpy`, 28 in all) on the `eltopo_msvc`
+  lib; (2) `common/util.h` polyfills `lround`/`remainder` under a bare
+  `#ifdef _MSC_VER`, colliding with modern MSVC's CRT declarations
+  (`C2556`/`C2371`/`C2491`), so the CMake step renames those two definitions out
+  of the way in our FetchContent copy. Windows now ships the full MEX set except
+  the macOS-only `impaste`.
 
 - `build-package.yml` (Windows strip): rename the toolchain trees with
   `[System.IO.Directory]::Move` (a metadata-only Win32 `MoveFile` for a
