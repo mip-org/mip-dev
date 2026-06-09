@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- gptoolbox: fix El Topo (`eltopo` MEX) crashing MATLAB on Linux + Windows — a
+  BLAS integer-width (LP64 vs ILP64) ABI bug. El Topo declares 32-bit `int` BLAS
+  args but the MEX links MATLAB's 64-bit-integer `libmwblas`/`libmwlapack`, so
+  the first BLAS call walked MKL off its buffers (access violation inside
+  `mkl.dll`). Added `eltopo_blas_shim.cpp`, a thin 32→64-bit argument-marshaling
+  layer: `CMakeLists.txt` renames El Topo's BLAS/LAPACK symbols to private
+  `eltopo_*` names that bind to the shim, which widens the integer args and
+  forwards to MATLAB's BLAS (the math still runs in MKL). macOS is unaffected
+  (links Accelerate's 32-bit-int CBLAS) and unchanged. `test_gptoolbox_mex.m`
+  now runs an `eltopo` two-sphere collision so the strip-and-test job exercises
+  it on every arch (previously `eltopo` was built but never run). See
+  `BUILD_NOTES.md` ("BLAS integer width").
+
 - `build-package.yml`: apply the channel's release-only vcpkg overlay triplets
   globally via `VCPKG_OVERLAY_TRIPLETS` (set alongside `VCPKG_DEFAULT_BINARY_CACHE`
   in the Windows vcpkg prep step) instead of a per-package `--overlay-triplets`

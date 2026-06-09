@@ -218,16 +218,54 @@ loop:
 - **`-DWIN32`.** MSVC defines `_WIN32` but not bare `WIN32`; libigl's `Timer.h`
   guards `<windows.h>` on `WIN32` and otherwise pulls POSIX `<sys/time.h>`.
 - **El Topo.** Built from our own `eltopo_msvc` target (eltopo3d's CMake is
-  gcc/clang-only — hardcoded flags + `find_package(BLAS REQUIRED)`). Two source
-  fixups: `util.h`'s `lround`/`remainder` polyfills (`#ifdef _MSC_VER`) collide
-  with the modern CRT (renamed away); and its hand-rolled Fortran BLAS prototypes
-  (`daxpy_`) don't match Win64 MATLAB's **bare** exports (`daxpy`), so the 28
-  BLAS/LAPACK symbols are preprocessor-renamed `name_`→`name` on `eltopo_msvc`.
-  (Unix MATLAB exports the underscore form, so Linux/macOS link unchanged.)
+  gcc/clang-only — hardcoded flags + `find_package(BLAS REQUIRED)`). Source fixup:
+  `util.h`'s `lround`/`remainder` polyfills (`#ifdef _MSC_VER`) collide with the
+  modern CRT (renamed away). The BLAS/LAPACK symbols are preprocessor-renamed
+  `name_`→`eltopo_name` and bound to the integer-width shim (which forwards to
+  MATLAB's bare Win64 exports) — see **BLAS integer width** below.
 
 Previously-open risks, now resolved: embree builds under Linux gcc-toolset-10
 (GCC 10.3); `libgomp` on Linux is bundled as a leaf `.so` only if it appears
 (`scripts/bundle_runtime_libs`).
+
+## BLAS integer width (El Topo, Linux + Windows)
+
+El Topo's `blas_wrapper.h`/`lapack_wrapper.h` (its `USE_FORTRAN_BLAS` path, used
+on Linux and Windows) declare every BLAS/LAPACK **integer** argument as 32-bit
+`int`. But the `eltopo` MEX resolves those calls against MATLAB's
+`libmwblas`/`libmwlapack`, whose Fortran integer is **64-bit** (`ptrdiff_t`,
+i.e. ILP64). Passing a 4-byte `int*` (N, INCX, LDA, …) where MATLAB reads 8
+bytes feeds a garbage high word into the dimension and walks MKL off the end of
+its buffers → **access violation inside `mkl.dll`** on the first El Topo BLAS
+call (originally seen as a hard MATLAB crash on Windows; Linux has the identical
+mismatch). macOS is unaffected — it links Accelerate's **32-bit-int** CBLAS,
+which matches El Topo, so none of this applies there.
+
+The fix is an ABI shim, not header surgery (El Topo's `int` is shared with loop
+counters / mesh indices / its own `ipiv`/`iwork` allocations, so retyping it is
+fragile). Two parts:
+
+1. **Rename** (`CMakeLists.txt`, `ELTOPO_BLAS_RENAME`): preprocessor-rename every
+   BLAS/LAPACK symbol the wrappers declare, `name_`→`eltopo_name`, on the
+   `eltopo_msvc` (Windows) and `eltopo_release` (Linux) targets. Renaming the
+   whole set guarantees nothing falls through to a 64-bit `mwblas` symbol.
+2. **Shim** (`eltopo_blas_shim.cpp`, linked into the MEX by `compile.m`, **not**
+   the CMake deps build — so it sees MATLAB's `<blas.h>`/`<lapack.h>`): defines
+   each `eltopo_name` with El Topo's exact 32-bit signature, copies the integer
+   arguments into `ptrdiff_t` storage (scalars by value; the few integer *arrays*
+   — `ipiv`/`iwork` — into a widened temporary), and forwards to MATLAB's real
+   routine. It is pure argument marshaling — MKL still does all the math.
+   `<blas.h>`'s `FORTRAN_WRAPPER` macro maps `daxpy`→`daxpy_` (Linux) or `daxpy`
+   (Windows), so the bare-vs-underscore export difference is handled there, not
+   in the rename.
+
+The shim implements the symbols El Topo references; an unshimmed-but-referenced
+symbol fails **loudly at link** (undefined `eltopo_*`), never silently. At
+runtime the `eltopo` MEX only exercises the **BLAS** half (its `el_topo_integrate`
+collision path via the impact-zone solver); the **LAPACK** half is reached only by
+El Topo's mesh-improvement/topology ops, which `eltopo.cpp` disables (`G = F`).
+`test_gptoolbox_mex.m` runs a two-sphere collision to cover the BLAS path (the
+actual regression); the LAPACK marshaling is validated separately.
 
 ## Build sequence
 

@@ -268,13 +268,22 @@ end
 % libeltopo target in the manifest. On Windows libeltopo is our own MSVC target
 % (eltopo_msvc; see CMakeLists.txt) since eltopo3d's CMakeLists is gcc/clang-only.
 eltopoLib = libsByCat('eltopo');
+eltopoSrcs = {fullfile(mexDir, 'eltopo.cpp')};
 if ismac
     blasArgs = {'LDFLAGS=$LDFLAGS -framework Accelerate'};
 else
+    % Off-macOS, eltopo links MATLAB's libmwblas/libmwlapack, whose Fortran
+    % integer is 64-bit (ptrdiff_t); El Topo's wrappers declare 32-bit int.
+    % eltopo_blas_shim.cpp bridges that width gap: El Topo's BLAS/LAPACK calls
+    % are renamed to eltopo_* (CMakeLists.txt ELTOPO_BLAS_RENAME) and bind to the
+    % shim, which widens the integer args and forwards to MATLAB's BLAS. macOS
+    % links Accelerate (32-bit-int CBLAS, matches El Topo) and needs no shim.
+    % The shim is overlaid at srcRoot (a channel-provided file, like compile.m).
     blasArgs = {'-lmwlapack', '-lmwblas'};
+    eltopoSrcs{end+1} = fullfile(srcRoot, 'eltopo_blas_shim.cpp');
 end
 fprintf('  mex eltopo\n');
-mex(common{:}, '-output', 'eltopo', fullfile(mexDir, 'eltopo.cpp'), ...
+mex(common{:}, '-output', 'eltopo', eltopoSrcs{:}, ...
     eltopoLib{:}, blasArgs{:});
 nBuilt = nBuilt + 1;
 

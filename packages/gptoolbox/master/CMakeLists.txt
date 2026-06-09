@@ -87,6 +87,28 @@ endif()
 # build host's CPU ISA into the binary and crash on older end-user CPUs. Pre-seed
 # that cache var OFF so the check is skipped and the flag never added.
 set(COMPILER_SUPPORTS_MARCH_NATIVE OFF CACHE BOOL "" FORCE)
+# BLAS/LAPACK integer-width shim rename (Linux + Windows). El Topo's
+# blas_wrapper.h/lapack_wrapper.h (USE_FORTRAN_BLAS path) declare every BLAS
+# integer arg as 32-bit `int`, but the eltopo MEX links MATLAB's
+# libmwblas/libmwlapack, whose Fortran integer is 64-bit (ptrdiff_t). Passing a
+# 4-byte int* where MATLAB reads 8 crashes MKL. So rename El Topo's BLAS/LAPACK
+# calls to private eltopo_* names that bind to eltopo_blas_shim.cpp (linked into
+# the MEX by mex()), which widens 32->64 and forwards to MATLAB. Renaming the
+# whole set the wrappers declare guarantees nothing falls through to a 64-bit
+# mwblas symbol; the shim implements the subset El Topo references (an unshimmed
+# referenced symbol fails loudly at link). macOS is excluded: it links
+# Accelerate's 32-bit-int CBLAS (matches El Topo) and references no Fortran BLAS.
+# See compile.m (eltopo link) and BUILD_NOTES.md ("BLAS integer width").
+set(ELTOPO_BLAS_RENAME
+  dasum_=eltopo_dasum daxpy_=eltopo_daxpy dcopy_=eltopo_dcopy ddot_=eltopo_ddot
+  dgemm_=eltopo_dgemm dgemv_=eltopo_dgemv dnrm2_=eltopo_dnrm2 dscal_=eltopo_dscal
+  dsdot_=eltopo_dsdot dswap_=eltopo_dswap idamax_=eltopo_idamax
+  isamax_=eltopo_isamax sasum_=eltopo_sasum saxpy_=eltopo_saxpy
+  scopy_=eltopo_scopy sdot_=eltopo_sdot sgemm_=eltopo_sgemm sgemv_=eltopo_sgemv
+  snrm2_=eltopo_snrm2 sscal_=eltopo_sscal sswap_=eltopo_sswap
+  dgelsd_=eltopo_dgelsd dgesdd_=eltopo_dgesdd dgesv_=eltopo_dgesv
+  dgetrf_=eltopo_dgetrf dgetri_=eltopo_dgetri dsyev_=eltopo_dsyev
+  sgesv_=eltopo_sgesv)
 FetchContent_Declare(eltopo
   GIT_REPOSITORY https://github.com/alecjacobson/eltopo.git
   GIT_TAG 3cf988aae467392d1066bdde0be3f54487a0ba2c)
@@ -97,6 +119,13 @@ if(NOT eltopo_POPULATED)
     # gcc/clang: eltopo3d's CMakeLists builds cleanly (produces target
     # eltopo_release, aliased to libeltopo).
     add_subdirectory(${eltopo_SOURCE_DIR}/eltopo3d ${eltopo_BINARY_DIR})
+    # Linux compiles El Topo's USE_FORTRAN_BLAS path against MATLAB's 64-bit-int
+    # BLAS, so it needs the same shim rename as Windows. (Applied post-hoc since
+    # add_subdirectory owns the target; the defs still reach its sources at build
+    # time.) macOS uses Accelerate (32-bit-int CBLAS) -> no rename, no shim.
+    if(NOT APPLE AND TARGET eltopo_release)
+      target_compile_definitions(eltopo_release PRIVATE ${ELTOPO_BLAS_RENAME})
+    endif()
   else()
     # Windows/MSVC: eltopo3d's CMakeLists is gcc/clang-only -- it hardcodes
     # -std=c++11/-Wall/-fPIC into CMAKE_CXX_FLAGS and does find_package(BLAS
@@ -140,18 +169,12 @@ if(NOT eltopo_POPULATED)
       "${_eltopo3d}/../common/meshes")
     target_compile_definitions(eltopo_msvc PRIVATE
       NO_GUI USE_FORTRAN_BLAS __LITTLE_ENDIAN__ NOMINMAX _USE_MATH_DEFINES)
-    # USE_FORTRAN_BLAS makes El Topo call the trailing-underscore Fortran names
-    # (daxpy_), but Win64 MATLAB's libmwblas/libmwlapack export the BARE names
-    # (daxpy) -- the opposite of Linux/macOS MATLAB. Preprocessor-rename every
-    # BLAS/LAPACK symbol the wrappers declare (name_ -> name) so the lib's
-    # references bind to MATLAB's Windows BLAS at the eltopo MEX link.
-    target_compile_definitions(eltopo_msvc PRIVATE
-      dasum_=dasum daxpy_=daxpy dcopy_=dcopy ddot_=ddot dgemm_=dgemm
-      dgemv_=dgemv dnrm2_=dnrm2 dscal_=dscal dsdot_=dsdot dswap_=dswap
-      idamax_=idamax isamax_=isamax sasum_=sasum saxpy_=saxpy scopy_=scopy
-      sdot_=sdot sgemm_=sgemm sgemv_=sgemv snrm2_=snrm2 sscal_=sscal sswap_=sswap
-      dgelsd_=dgelsd dgesdd_=dgesdd dgesv_=dgesv dgetrf_=dgetrf dgetri_=dgetri
-      dsyev_=dsyev sgesv_=sgesv)
+    # Same BLAS-integer-width shim rename as Linux (see ELTOPO_BLAS_RENAME
+    # above). This supersedes the old name_->name rename: El Topo's calls now
+    # bind to eltopo_blas_shim.cpp, which forwards to MATLAB's BARE Win64 exports
+    # (daxpy) via <blas.h>'s FORTRAN_WRAPPER macro -- so the bare-name handling
+    # lives in the shim, not here.
+    target_compile_definitions(eltopo_msvc PRIVATE ${ELTOPO_BLAS_RENAME})
     target_compile_options(eltopo_msvc PRIVATE /bigobj)
   endif()
 endif()

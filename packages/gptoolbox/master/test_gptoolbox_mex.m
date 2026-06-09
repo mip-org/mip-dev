@@ -2,9 +2,10 @@
 %
 % Exercises both the pure-MATLAB layer and a handful of compiled MEX
 % functions so that a broken build/link is caught by `mip test`. The MEX
-% functions used here (fast_sparse, orient2d, winding_number) are all in the
-% retained libigl-core / igl::predicates set, so they are built on every
-% compiled architecture.
+% functions used here (fast_sparse, orient2d, winding_number, eltopo) are built
+% on every compiled architecture: the first three are in the retained
+% libigl-core / igl::predicates set; eltopo additionally links BLAS/LAPACK and
+% guards the El Topo integer-width regression (see eltopo_blas_shim.cpp).
 
 rng('default');
 
@@ -72,5 +73,42 @@ assert(abs(abs(w_in) - 1) < 1e-6, ...
     sprintf('winding_number inside was %g, expected |w|=1', w_in));
 assert(abs(w_out) < 1e-6, ...
     sprintf('winding_number outside was %g, expected 0', w_out));
+
+%% --- MEX: eltopo (El Topo, links BLAS/LAPACK) -------------------------
+% Guards the BLAS integer-width regression: El Topo declares 32-bit `int` BLAS
+% args while MATLAB's libmwblas/libmwlapack take 64-bit (ptrdiff_t); the
+% eltopo_blas_shim bridges that on Linux/Windows (macOS uses Accelerate). A
+% wrong-width link crashes MATLAB inside MKL on the first El Topo BLAS call, so
+% simply running a collision below is the regression test.
+
+fprintf('Testing eltopo...\n');
+[Vs, Fs] = subdivided_sphere(1);          % small closed icosphere (42 verts)
+
+% (a) No collision: translate one sphere -> full step, U == V1, t == 1.
+V0a = Vs;
+V1a = Vs + [0.25 0 0];
+[Ua, ~, ta] = eltopo(V0a, Fs, V1a);
+assert(isequal(size(Ua), size(V0a)), 'eltopo returned wrong-size U');
+assert(all(isfinite(Ua(:))), 'eltopo returned non-finite vertices');
+assert(abs(ta - 1) < 1e-6, sprintf('eltopo no-collision t was %g, expected 1', ta));
+assert(max(abs(Ua(:) - V1a(:))) < 1e-9, 'eltopo no-collision U should equal V1');
+
+% (b) Collision: two spheres (gap 1 between surfaces) driven to fully overlap.
+% El Topo resolves the collision (impact zones) and returns collision-free
+% positions -- it may still report a full step (t up to 1); the guard is that
+% it runs the BLAS path without crashing and keeps the spheres apart.
+n  = size(Vs, 1);
+V0 = [Vs + [-1.5 0 0]; Vs + [1.5 0 0]];
+Fc = [Fs; Fs + n];
+V1 = [Vs; Vs];                            % both target the origin
+[U, ~, t] = eltopo(V0, Fc, V1);
+assert(isequal(size(U), size(V0)), 'eltopo returned wrong-size U');
+assert(all(isfinite(U(:))), 'eltopo returned non-finite vertices');
+assert(t >= 0 && t <= 1, sprintf('eltopo collision t was %g, expected 0<=t<=1', t));
+% The two components must not interpenetrate (closest vertex pair, base MATLAB).
+A = U(1:n, :); B = U(n+1:end, :);
+gap = sqrt(sum((permute(A,[1 3 2]) - permute(B,[3 1 2])).^2, 3));
+assert(min(gap(:)) > 0, ...
+    sprintf('eltopo let the spheres interpenetrate (min gap %g)', min(gap(:))));
 
 fprintf('SUCCESS\n');
