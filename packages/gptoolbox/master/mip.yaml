@@ -19,9 +19,11 @@ paths:
   - path: wrappers
 
 builds:
-  - architectures: [macos_arm64, linux_x86_64, windows_x86_64]
-    compile_script: compile.m
+  - architectures: [any]
     test_script: test_gptoolbox.m
+  - architectures: [macos_arm64, linux_x86_64, windows_x86_64]
+    test_script: test_gptoolbox.m
+    compile_script: compile.m
     setup:
       macos:
         - "brew install cmake cgal"

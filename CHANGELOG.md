@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- gptoolbox: add a pure-MATLAB `any` build to `mip.yaml`. Non-compiled arches
+  now resolve to a source-only fallback (no `compile_script`, no native setup)
+  instead of erroring in `match_build`, matching what the README already
+  describes. `test_gptoolbox.m` runs the pure-MATLAB checks and skips the MEX
+  sweep there (`mip.build.has_mex` is false with no MEX present) — which is what
+  makes the gate below reachable; previously gptoolbox built only the three
+  compiled arches.
+
 - gptoolbox: gate the MEX sweep on whether the package actually ships MEX,
   instead of the host machine's architecture. The test now stops after the
   pure-MATLAB checks when `~mip.build.has_mex(mip.test.get_fqn())`, replacing
