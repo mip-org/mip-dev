@@ -112,6 +112,21 @@ if(NOT eltopo_POPULATED)
       "${_eltopo3d}/../common/*.cpp"
       "${_eltopo3d}/../common/tunicate/*.cpp"
       "${_eltopo3d}/../common/newsparse/*.cpp")
+    # common/util.h polyfills lround/remainder under a bare `#ifdef _MSC_VER` for
+    # old MSVC, but modern MSVC's CRT already declares them (as dllimport), so the
+    # definitions collide (C2556/C2371/C2491). Rename the polyfills out of the way
+    # in our private FetchContent copy so El Topo's lround()/remainder() calls
+    # bind to the CRT versions. gcc/clang never compile this block, so it's an
+    # MSVC-only fixup; idempotent (the renamed source no longer matches).
+    set(_util_h "${_eltopo3d}/../common/util.h")
+    file(READ "${_util_h}" _util_contents)
+    string(REPLACE "inline int lround(double x)"
+                   "inline int eltopo_unused_lround(double x)"
+                   _util_contents "${_util_contents}")
+    string(REPLACE "inline double remainder(double x, double y)"
+                   "inline double eltopo_unused_remainder(double x, double y)"
+                   _util_contents "${_util_contents}")
+    file(WRITE "${_util_h}" "${_util_contents}")
     # Real target eltopo_msvc (parity with eltopo3d's eltopo_release), aliased to
     # libeltopo so the manifest's $<TARGET_FILE:libeltopo> resolves on every arch.
     add_library(eltopo_msvc STATIC ${ELTOPO_SRC})
