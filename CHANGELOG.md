@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): define `CCD_STATIC_DEFINE` and `EMBREE_STATIC_LIB` when
+  compiling the MEX. libccd and embree decorate their public API with
+  `__declspec(dllimport)` by default; both are linked as static libs, but the
+  MEX are built by `mex()` (not CMake), so they don't inherit the static
+  targets' compile definitions and MSVC looked for `__imp_*` import stubs a
+  static lib lacks (`gjk_intersect` failed with unresolved
+  `__imp_ccdGJKIntersect`; the embree MEX would have followed). Added both
+  defines to the Windows `mex()` flags — a no-op on GCC/Clang (no import stubs)
+  and harmless to MEX that include neither header.
+
 - gptoolbox (Windows): also make the host triplet release-only. gmp's
   `{"name":"gmp","host":true}` self-dependency builds gmp for the *host* triplet
   (`x64-windows`), which the target-only overlay didn't cover, so host gmp still

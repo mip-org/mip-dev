@@ -180,8 +180,18 @@ incFlags = [extraInc, incFlags];   % Linux gmp/mpfr headers first (no-op elsewhe
 % (CGAL's heavy templates overflow MSVC's default object section limit) and the
 % NOMINMAX / _USE_MATH_DEFINES defines CGAL/Eigen need against <windows.h>.
 if ispc
+    % CCD_STATIC_DEFINE / EMBREE_STATIC_LIB: libccd and embree decorate their
+    % public API with __declspec(dllimport) by default. We link both as static
+    % libs, but the MEX are compiled by mex() (not CMake), so they don't inherit
+    % the static targets' compile definitions; without these, MSVC emits import
+    % stubs and the link fails with unresolved __imp_* externals (e.g.
+    % gjk_intersect -> __imp_ccdGJKIntersect, the embree MEX -> __imp_rtc*).
+    % Windows/MSVC only: GCC/Clang have no import-stub mechanism, so the macros
+    % are a no-op off-Windows, and they're harmless to MEX that include neither
+    % header. See BUILD_NOTES.md.
     stdFlags = {'COMPFLAGS=$COMPFLAGS /std:c++17 /bigobj', ...
-                '-DNOMINMAX', '-D_USE_MATH_DEFINES'};
+                '-DNOMINMAX', '-D_USE_MATH_DEFINES', ...
+                '-DCCD_STATIC_DEFINE', '-DEMBREE_STATIC_LIB'};
 else
     stdFlags = {'CXXFLAGS=$CXXFLAGS -std=c++17'};
 end
