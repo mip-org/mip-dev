@@ -10,6 +10,7 @@ paths:
   - path: external
     recursive: true
   - path: imageprocessing
+  - path: images
   - path: matrix
   - path: mesh
   - path: mex
@@ -20,7 +21,7 @@ paths:
 builds:
   - architectures: [macos_arm64, linux_x86_64, windows_x86_64]
     compile_script: compile.m
-    test_script: test_gptoolbox_mex.m
+    test_script: test_gptoolbox.m
     setup:
       macos:
         - "brew install cmake cgal"

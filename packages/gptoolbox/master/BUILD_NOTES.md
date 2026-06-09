@@ -267,6 +267,39 @@ El Topo's mesh-improvement/topology ops, which `eltopo.cpp` disables (`G = F`).
 `test_gptoolbox_mex.m` runs a two-sphere collision to cover the BLAS path (the
 actual regression); the LAPACK marshaling is validated separately.
 
+## The `wrappers/` directory — external-binary front-ends (not built)
+
+Separate from `mex/`: `wrappers/*.m` are plain-MATLAB functions that `system()`
+out to an **external command-line binary** (located via a `path_to_*` resolver),
+not compiled code. `compile.m` builds **none** of these binaries, and the
+issue-#16 coverage gate (`scripts/test_one.m`) only diffs *built MEX* against
+*loaded MEX* — so wrappers are invisible to it by design: neither built, nor
+bundled, nor exercised by the test. On an installed package a wrapper runs only
+if the user has separately installed its tool system-wide.
+
+This is intentional (these are third-party tools we don't own), but it does mean
+each `.m` ships without its backing binary. The buckets:
+
+| Wrapper | Backing binary | Status |
+|---|---|---|
+| `tetgen.m` | `tetgen` | **Redundant** — the functionality ships as the `tetrahedralize` MEX (tetgen static lib). The wrapper is just an alternate front-end. |
+| `triangle.m` | `triangle` | **Redundant** — ships as the `triangulate` / `refine_triangulation` MEX (triangle static lib). |
+| `meshfix.m` | `meshfix` (Attene) | **Genuine gap** — no MEX equivalent; dead unless the user installs MeshFix. The clearest candidate were we ever to bundle a wrapper binary. |
+| `qslim.m` | `qslim` | Gap — no exact equivalent (`decimate_libigl` MEX overlaps in purpose, different algorithm). |
+| `medit.m` | `medit` | Gap — GUI tet-mesh viewer; arguably out of scope to bundle. |
+| `texture_map.m` | ImageMagick `convert` | Gap — depends on a system image tool. |
+| `nested_cages.m` | `nested_cages` | **Dead stub** — hardcodes `/Users/alecjacobson/Repos/...`; non-functional even upstream. |
+| `readSCISIM.m`, `plane_drop.m` | python + SCISIM / implicittoolkit | **Dead stub** — `readSCISIM` hardcodes `/Users/ajx/Dropbox/scisim/...`; SCISIM is unpackaged research code. |
+
+The remaining `wrappers/` files — `find_first_path.m` and the `path_to_*.m`
+resolvers — are pure helpers with no binary.
+
+Closing the `meshfix` gap, if we ever do, would mirror the MEX pattern: build
+MeshFix from source in `compile.m` (it's a self-contained CMake project in
+libigl's `external/MeshFix`), ship the executable, point `path_to_meshfix` at the
+shipped copy, and add a `meshfix(V,F)` case to the test — which would also mean
+extending the coverage gate beyond MEX to cover shipped binaries.
+
 ## Build sequence
 
 All three architectures are landed and published (macOS, Linux, Windows). The

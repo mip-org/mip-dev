@@ -2,6 +2,45 @@
 
 ## Unreleased
 
+- gptoolbox: gate the MEX sweep on whether the package actually ships MEX,
+  instead of the host machine's architecture. The test now stops after the
+  pure-MATLAB checks when `~mip.build.has_mex(mip.test.get_fqn())`, replacing
+  the old `mip.build.arch()` host-arch check — which was wrong for an `any`
+  build produced on a compiled-arch runner (host arch is concrete, so the MEX
+  sweep ran against a package with no MEX). `has_mex` is
+  `~isempty(mip.build.list_mex(fqn))`, which scans the package's own source dir
+  for `*.<mexext>`; `test_one.m`'s issue-#16 coverage gate now sources its
+  built-MEX list from that same `mip.build.list_mex`, so the gate and the
+  coverage check share one implementation and can't drift. Requires the helpers
+  added to `mip-org/mip` (`mip.build.list_mex`, `mip.build.has_mex`,
+  `mip.test.get_fqn`), so that change must ship before this one. No behavior
+  change on the current compiled builds (gptoolbox has no `any` build yet).
+
+- gptoolbox: document the `wrappers/` gap in `BUILD_NOTES.md`. The `wrappers/*.m`
+  functions shell out to external command-line binaries (meshfix, qslim, medit,
+  …) that `compile.m` does not build and we do not bundle, and the issue-#16
+  coverage gate is MEX-only, so they are outside it by design. Recorded which
+  wrappers are redundant (tetgen/triangle — the real work ships as MEX), genuine
+  gaps (meshfix has no MEX equivalent), and dead stubs (nested_cages/readSCISIM
+  hardcode paths to the upstream author's machine), plus the pattern to follow if
+  we ever build & ship the meshfix binary. Documentation only — no build change.
+
+- gptoolbox / channel: exercise every shipped MEX in the test, and enforce it
+  channel-wide (issue #16). The gptoolbox test now invokes all built MEX (was 3)
+  with inputs that reach each one's real work — loading alone misses runtime ABI
+  bugs like the El Topo BLAS crash. `scripts/test_one.m` gained a post-test
+  coverage gate that diffs the package's built `.mex*` against what `inmem` shows
+  was loaded and fails the build on any un-exercised MEX (no-op for pure-MATLAB
+  packages), so this holds for every package, not just gptoolbox. The two test
+  scripts were merged into one arch-aware `test_gptoolbox.m` (pure-MATLAB checks
+  always run; the MEX sweep runs only on the compiled arches).
+
+- gptoolbox: add the `images/` directory to `mip.yaml` paths. It was missing (the
+  canonical gptoolbox addpath includes it), so `imdata.m` — the data-URI encoder
+  `mesh/writeGLTF.m` calls — was off the path, breaking `writeGLTF` on a textured
+  mesh. The files already ship in the `.mhl` (the bundler stages the full source);
+  only the path entry was absent.
+
 - gptoolbox: fix El Topo (`eltopo` MEX) crashing MATLAB on Linux + Windows — a
   BLAS integer-width (LP64 vs ILP64) ABI bug. El Topo declares 32-bit `int` BLAS
   args but the MEX links MATLAB's 64-bit-integer `libmwblas`/`libmwlapack`, so
