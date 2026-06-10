@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): define `_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR` on the MSVC
+  MEX compile. The `mesh_boolean` MEX crashed at runtime with an Access Violation
+  (`0xc0000005`) inside MATLAB R2023a's bundled `MSVCP140.dll` (`_Thrd_yield`,
+  null deref) — surfaced once the every-shipped-MEX test sweep first invoked it;
+  the build itself was unchanged and `intersect_other` (same CGAL/GMP exact-
+  arithmetic stack) passed. Root cause: the MEX is built `/MD` with the runner's
+  latest VS2022 toolset (14.4x, past the 14.40 `std::mutex` constexpr-constructor
+  ABI change) but loads against MATLAB's older (pre-14.40) `MSVCP140.dll`, which
+  the host searches ahead of System32. A v143 zero-init mutex run by the old lock
+  code null-derefs the first time `mesh_boolean`'s CGAL exact-construction path
+  touches `std::mutex`. Microsoft's opt-out macro restores the non-constexpr
+  constructor so the MEX stays compatible with the runtime MATLAB ships; applied
+  to all Windows MEX (no-op where no `std::mutex` is constructed). See
+  microsoft/STL#4730.
+
 - gptoolbox: add a pure-MATLAB `any` build to `mip.yaml`. Non-compiled arches
   now resolve to a source-only fallback (no `compile_script`, no native setup)
   instead of erroring in `match_build`, matching what the README already
