@@ -14,7 +14,9 @@
   identity and package ownership never fragments across repos; without the
   secret, builds skip caching and compile deps from source. Setup output now
   surfaces vcpkg restore/push counts in the job summary so a silently cold
-  cache is visible.
+  cache is visible. The feed is derived from the repo owner (not hardcoded to
+  mip-org), so channels hosted under other owners cache in their own namespace
+  with their own `MIP_PACKAGES_TOKEN`.
 
 - test_one: set `MIP_CONFIRM=y` so prompts never block batch MATLAB. Uninstalling
   the `mip` package itself routes to mip's interactive self-uninstall

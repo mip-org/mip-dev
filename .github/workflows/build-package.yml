@@ -262,9 +262,10 @@ jobs:
         env:
           MIP_PACKAGES_TOKEN: ${{ secrets.MIP_PACKAGES_TOKEN }}
         run: |
-          # Binary cache: a NuGet feed on GitHub Packages, shared org-wide by
-          # all channels. vcpkg stores each port as its own NuGet package keyed
-          # by ABI hash and restores/pushes per port DURING the install, so:
+          # Binary cache: a NuGet feed on GitHub Packages, shared by all
+          # channels in this repo's owner namespace. vcpkg stores each port as
+          # its own NuGet package keyed by ABI hash and restores/pushes per
+          # port DURING the install, so:
           #   - concurrent builds never race: the previous actions/cache design
           #     tarred the whole archives dir under one write-once key, so the
           #     first job to finish (always a cheap package) froze the cache and
@@ -272,18 +273,22 @@ jobs:
           #     build cold-built them (~15 min);
           #   - entries never expire: actions/cache evicts after 7 idle days,
           #     guaranteeing cold builds for packages built less than weekly.
-          # Every channel authenticates with the same machine-account PAT (org
+          # The feed follows the repo owner, so a channel hosted under another
+          # owner caches in THAT owner's namespace with its own token -- cache
+          # topology and trust follow repo ownership. Within mip-org, every
+          # channel authenticates with the same machine-account PAT (org
           # secret MIP_PACKAGES_TOKEN, classic, write:packages), so package
-          # ownership never fragments across repos: GitHub Packages grants write
-          # per package to its publisher, and the publisher is always this one
-          # identity. The token alone identifies the caller; the nuget username
-          # field is nominal. Without the secret (e.g. a fork), skip: vcpkg
-          # builds deps from source, uncached.
+          # ownership never fragments across repos: GitHub Packages grants
+          # write per package to its publisher, and the publisher is always
+          # this one identity. Channels outside mip-org supply their own PAT
+          # as a repo secret of the same name. The token alone identifies the
+          # caller; the nuget username field is nominal. Without the secret
+          # (e.g. a fork), skip: vcpkg builds deps from source, uncached.
           if [ -n "$MIP_PACKAGES_TOKEN" ]; then
-            feed="https://nuget.pkg.github.com/mip-org/index.json"
+            feed="https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
             nuget="$(cygpath -u "$(vcpkg fetch nuget | tail -1)")"
             "$nuget" sources add -Source "$feed" -Name GitHubPackages \
-              -UserName mip-org -Password "$MIP_PACKAGES_TOKEN" \
+              -UserName "${{ github.repository_owner }}" -Password "$MIP_PACKAGES_TOKEN" \
               -StorePasswordInClearText
             "$nuget" setapikey "$MIP_PACKAGES_TOKEN" -Source "$feed"
             echo "VCPKG_BINARY_SOURCES=clear;nuget,GitHubPackages,readwrite" >> "$GITHUB_ENV"
