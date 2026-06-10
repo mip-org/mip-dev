@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- test_one: set `MIP_CONFIRM=y` so prompts never block batch MATLAB. Uninstalling
+  the `mip` package itself routes to mip's interactive self-uninstall
+  confirmation, which errors in batch mode (broke `packages/mip/main` builds on
+  mip-core daily since June 6). No `mip` package here yet; applied for harness
+  parity with mip-core.
+
 - Add root `.gitattributes` with `* -text` (no line-ending conversion). Windows
   runners checked out the channel with CRLF (Git for Windows `core.autocrlf=true`
   default), so `prepare_one.py` recorded CRLF-flavored source hashes in published
