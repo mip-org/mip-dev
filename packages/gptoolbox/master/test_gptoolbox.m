@@ -284,15 +284,27 @@ fprintf('Testing readMSH...\n');
 [Vm, ~, Tm] = readMSH(mshf);
 assert(size(Vm, 2) == 3 && size(Tm, 2) == 4);
 
-%% MEX: read_mesh_from_xml
-fprintf('Testing read_mesh_from_xml...\n');
-[Vx, Fx] = read_mesh_from_xml(xmlf);
-assert(size(Vx, 1) == size(Va, 1) && size(Fx, 1) == size(Fa, 1));
+%% MEX: read_mesh_from_xml (skipped on Windows -- upstream bug, gated out of build)
+% read_mesh_from_xml.cpp assigns `filename` only inside a POSIX `#if __unix__`
+% (wordexp) block with no Windows branch, so the MEX reads an empty path and fails
+% on Windows. It's an upstream gptoolbox bug we don't patch; compile.m drops it from
+% the Windows build, so skip it here in lockstep (the test_one.m coverage gate diffs
+% built vs loaded MEX -- the build exclusion and this guard must move together).
+if ~ispc
+    fprintf('Testing read_mesh_from_xml...\n');
+    [Vx, Fx] = read_mesh_from_xml(xmlf);
+    assert(size(Vx, 1) == size(Va, 1) && size(Fx, 1) == size(Fa, 1));
+end
 
-%% MEX: read_triangle_mesh
-fprintf('Testing read_triangle_mesh...\n');
-[Vo, Fo] = read_triangle_mesh(objf);
-assert(size(Vo, 1) == nV && size(Fo, 1) == size(F, 1));
+%% MEX: read_triangle_mesh (skipped on Windows -- upstream bug, gated out of build)
+% Same upstream POSIX-only path handling: read_triangle_mesh.cpp wraps the path in
+% literal quotes that only wordexp strips, so on Windows the quotes survive and the
+% file is not found. Excluded from the Windows build in compile.m; skip in lockstep.
+if ~ispc
+    fprintf('Testing read_triangle_mesh...\n');
+    [Vo, Fo] = read_triangle_mesh(objf);
+    assert(size(Vo, 1) == nV && size(Fo, 1) == size(F, 1));
+end
 
 %% MEX: refine_triangulation
 fprintf('Testing refine_triangulation...\n');

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): drop `read_mesh_from_xml` and `read_triangle_mesh` from the
+  Windows build (ships 56 MEX there, was 58). Both are broken on Windows by an
+  upstream gptoolbox bug — each extracts the input file path only inside a POSIX
+  `#if defined(__unix__)` (`wordexp`) block, so on Windows `read_mesh_from_xml`
+  reads an empty filename and `read_triangle_mesh` reads a still-quoted path, and
+  both fail at runtime with "file not found". (`readMSH` does the same job correctly
+  — unconditional `mxArrayToString`, no quotes — and works.) We don't carry patches
+  for upstream source bugs, so `compile.m` excludes the two on Windows via a per-arch
+  `setdiff`, and `test_gptoolbox.m` skips their sections under `if ~ispc`; the two
+  must stay in sync so `test_one.m`'s coverage gate (built == loaded) stays balanced.
+  Linux/macOS are unaffected and still build and exercise both.
+
 - gptoolbox (Windows): define `_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR` on the MSVC
   MEX compile. The `mesh_boolean` MEX crashed at runtime with an Access Violation
   (`0xc0000005`) inside MATLAB R2023a's bundled `MSVCP140.dll` (`_Thrd_yield`,

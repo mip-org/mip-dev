@@ -249,6 +249,23 @@ groups = {
     {'-DWITH_CGAL'},           {'cgal','xml'}, {'read_mesh_from_xml'};
     };
 
+% Per-arch MEX exclusions. read_mesh_from_xml and read_triangle_mesh are broken
+% on Windows by an UPSTREAM gptoolbox bug, not by our build: both extract the
+% input path only inside a POSIX `#if defined(__unix__)` (wordexp) block, so on
+% Windows read_mesh_from_xml gets an empty filename and read_triangle_mesh gets a
+% still-quoted path -- both fail with "file not found" at runtime. (readMSH does
+% the same job correctly -- unconditional mxArrayToString, no quotes -- and works
+% on Windows.) We don't carry patches for upstream source bugs, so drop these two
+% from the Windows build. This MUST stay in sync with the matching `if ~ispc`
+% guards in test_gptoolbox.m so the issue-#16 coverage gate (built == loaded)
+% stays balanced. (Same per-arch pattern as the macOS-only impaste below.)
+if ispc
+    excludeMex = {'read_mesh_from_xml', 'read_triangle_mesh'};
+    for g = 1:size(groups, 1)
+        groups{g, 3} = setdiff(groups{g, 3}, excludeMex, 'stable');
+    end
+end
+
 nBuilt = 0;
 for g = 1:size(groups, 1)
     extra = groups{g, 1};

@@ -202,9 +202,14 @@ macOS the only dynamic deps across all built MEX are `@rpath/libmx`,
 
 ## Windows / MSVC specifics (all confirmed on CI)
 
-The Windows build is green and feature-complete: **58 MEX**, the full set bar the
-macOS-only `impaste`. The non-obvious things MSVC needed, each found via the CI
-loop:
+The Windows build is green: **56 MEX**. The set is everything bar the macOS-only
+`impaste` and two MEX excluded on Windows by an upstream gptoolbox bug —
+`read_mesh_from_xml` and `read_triangle_mesh` extract the input path only inside a
+POSIX `#if defined(__unix__)` (`wordexp`) block, so on Windows they read an empty /
+still-quoted path and fail at runtime ("file not found"). `compile.m` drops them on
+Windows (in sync with the `if ~ispc` guards in `test_gptoolbox.m`); `readMSH` does
+the same job correctly and ships. The non-obvious things MSVC needed, each found via
+the CI loop:
 
 - **Manifest per config.** The deps `CMakeLists.txt` emits `manifest-$<CONFIG>.txt`
   (not a fixed name): the multi-config VS generator evaluates `file(GENERATE)`
