@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Windows vcpkg deps: cache port binaries on a GitHub Packages NuGet feed
+  instead of `actions/cache`. The old design tarred the whole archives dir under
+  one write-once key shared by every package, so the first job to save (always
+  a cheap package) froze the cache and gptoolbox's gmp/mpfr never persisted —
+  every Windows gptoolbox build cold-built them (~15 min); entries also expired
+  after 7 idle days. The NuGet provider stores each port under its own
+  ABI-hashed package mid-install: no key races, no expiry, and all channels
+  share one org-wide cache. Auth is the `MIP_PACKAGES_TOKEN` org secret (a
+  machine-account classic PAT with `write:packages`) so every publish uses one
+  identity and package ownership never fragments across repos; without the
+  secret, builds skip caching and compile deps from source. Setup output now
+  surfaces vcpkg restore/push counts in the job summary so a silently cold
+  cache is visible.
+
 - test_one: set `MIP_CONFIRM=y` so prompts never block batch MATLAB. Uninstalling
   the `mip` package itself routes to mip's interactive self-uninstall
   confirmation, which errors in batch mode (broke `packages/mip/main` builds on

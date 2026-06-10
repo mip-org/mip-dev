@@ -259,15 +259,40 @@ jobs:
       - name: Prepare vcpkg environment (Windows)
         if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true'
         shell: bash
+        env:
+          MIP_PACKAGES_TOKEN: ${{ secrets.MIP_PACKAGES_TOKEN }}
         run: |
-          # vcpkg's files-based binary cache (the default at
-          # %LOCALAPPDATA%\vcpkg\archives) dies with the ephemeral runner. Point
-          # it at a workspace dir so the actions/cache step below can persist it
-          # across runs. vcpkg errors if VCPKG_DEFAULT_BINARY_CACHE points at a
-          # missing dir, so create it; hand vcpkg a Windows path via cygpath.
-          dir="$GITHUB_WORKSPACE/vcpkg-archives"
-          mkdir -p "$dir"
-          echo "VCPKG_DEFAULT_BINARY_CACHE=$(cygpath -w "$dir")" >> "$GITHUB_ENV"
+          # Binary cache: a NuGet feed on GitHub Packages, shared org-wide by
+          # all channels. vcpkg stores each port as its own NuGet package keyed
+          # by ABI hash and restores/pushes per port DURING the install, so:
+          #   - concurrent builds never race: the previous actions/cache design
+          #     tarred the whole archives dir under one write-once key, so the
+          #     first job to finish (always a cheap package) froze the cache and
+          #     gptoolbox's gmp/mpfr never persisted -- every Windows gptoolbox
+          #     build cold-built them (~15 min);
+          #   - entries never expire: actions/cache evicts after 7 idle days,
+          #     guaranteeing cold builds for packages built less than weekly.
+          # Every channel authenticates with the same machine-account PAT (org
+          # secret MIP_PACKAGES_TOKEN, classic, write:packages), so package
+          # ownership never fragments across repos: GitHub Packages grants write
+          # per package to its publisher, and the publisher is always this one
+          # identity. The token alone identifies the caller; the nuget username
+          # field is nominal. Without the secret (e.g. a fork), skip: vcpkg
+          # builds deps from source, uncached.
+          if [ -n "$MIP_PACKAGES_TOKEN" ]; then
+            feed="https://nuget.pkg.github.com/mip-org/index.json"
+            nuget="$(cygpath -u "$(vcpkg fetch nuget | tail -1)")"
+            "$nuget" sources add -Source "$feed" -Name GitHubPackages \
+              -UserName mip-org -Password "$MIP_PACKAGES_TOKEN" \
+              -StorePasswordInClearText
+            "$nuget" setapikey "$MIP_PACKAGES_TOKEN" -Source "$feed"
+            echo "VCPKG_BINARY_SOURCES=clear;nuget,GitHubPackages,readwrite" >> "$GITHUB_ENV"
+            # Linkage metadata: GitHub associates a first-published package with
+            # this repo (display + inherits the repo's public visibility).
+            echo "VCPKG_NUGET_REPOSITORY=${{ github.server_url }}/${{ github.repository }}" >> "$GITHUB_ENV"
+          else
+            echo "::warning::MIP_PACKAGES_TOKEN not set; vcpkg binary caching disabled, native deps build from source"
+          fi
 
           # Channel-shared overlay triplets, applied to every `vcpkg install` a
           # package runs (env var = the --overlay-triplets flag, globally). The
@@ -277,45 +302,28 @@ jobs:
           # cold build). Harmless to any port: an overlay triplet only applies
           # when its filename matches the requested triplet name, so a package
           # asking for some other triplet silently gets the builtin. Channel-level
-          # (not per-package) keeps ABI hashes identical so packages share the
-          # persisted binary cache above; the cache key hashes vcpkg-triplets/.
+          # (not per-package) keeps ABI hashes identical so every package -- and
+          # every channel -- shares the binary cache above: the triplet's bytes
+          # feed each port's ABI hash, so keep vcpkg-triplets/ byte-identical
+          # across channels (it ships in mip-channel-template; don't drift it).
           echo "VCPKG_OVERLAY_TRIPLETS=$(cygpath -w "$GITHUB_WORKSPACE/vcpkg-triplets")" >> "$GITHUB_ENV"
-
-      - name: Restore vcpkg cache (Windows)
-        id: vcpkg_cache
-        if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true'
-        uses: actions/cache/restore@v5
-        with:
-          path: vcpkg-archives
-          # vcpkg restores each port from inside this dir by its own ABI hash, so
-          # a coarse key is safe — a changed port just rebuilds itself, never the
-          # wrong binary. Bust the key when any package's deps or the vcpkg
-          # triplets change; restore-keys falls back to the latest prior cache so
-          # unchanged ports still hit.
-          key: vcpkg-archives-windows-${{ hashFiles('packages/**/mip.yaml', 'vcpkg-triplets/*.cmake') }}
-          restore-keys: |
-            vcpkg-archives-windows-
 
       - name: Run package setup
         if: steps.prepared_check.outputs.has_prepared == 'true'
         shell: bash
         run: |
           python scripts/package_setup.py \
-            --architecture "${{ inputs.architecture }}"
+            --architecture "${{ inputs.architecture }}" 2>&1 | tee /tmp/package_setup.log
 
-      - name: Save vcpkg cache (Windows)
-        # Save right after the install populates the cache dir, NOT via the
-        # combined actions/cache post-step: that only saves on job SUCCESS, so a
-        # later Bundle failure (the common case while stabilizing) discards the
-        # freshly-built gmp/mpfr and re-pays the ~25 min cold build next time.
-        # A plain `if:` runs this only when setup (and prior steps) succeeded, and
-        # placing it before Bundle means Bundle's outcome can't drop the cache.
-        # Skip when the restore was an exact hit (nothing new to save).
-        if: inputs.architecture == 'windows_x86_64' && steps.prepared_check.outputs.has_prepared == 'true' && steps.vcpkg_cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: vcpkg-archives
-          key: ${{ steps.vcpkg_cache.outputs.cache-primary-key }}
+          # Surface vcpkg binary-cache traffic in the job summary. The previous
+          # cache silently never hit for its entire life and nobody noticed;
+          # "Restored 0 package(s)" on a package with native deps means the
+          # cache is cold or broken and the build is paying full price.
+          if grep -qE "Restored [0-9]+ package" /tmp/package_setup.log; then
+            { echo "### vcpkg binary cache"
+              grep -E "Restored [0-9]+ package|submission of .* binary cache" /tmp/package_setup.log | head -8
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Set up MATLAB
         if: steps.prepared_check.outputs.has_prepared == 'true'
