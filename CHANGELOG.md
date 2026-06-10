@@ -9,14 +9,14 @@
   every Windows gptoolbox build cold-built them (~15 min); entries also expired
   after 7 idle days. The NuGet provider stores each port under its own
   ABI-hashed package mid-install: no key races, no expiry, and all channels
-  share one org-wide cache. Auth is the `MIP_PACKAGES_TOKEN` org secret (a
+  share one org-wide cache. Auth is the `MIP_CACHE_TOKEN` org secret (a
   machine-account classic PAT with `write:packages`) so every publish uses one
   identity and package ownership never fragments across repos; without the
   secret, builds skip caching and compile deps from source. Setup output now
   surfaces vcpkg restore/push counts in the job summary so a silently cold
   cache is visible. The feed is derived from the repo owner (not hardcoded to
   mip-org), so channels hosted under other owners cache in their own namespace
-  with their own `MIP_PACKAGES_TOKEN`.
+  with their own `MIP_CACHE_TOKEN`.
 
 - test_one: set `MIP_CONFIRM=y` so prompts never block batch MATLAB. Uninstalling
   the `mip` package itself routes to mip's interactive self-uninstall
