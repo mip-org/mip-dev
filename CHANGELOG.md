@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add root `.gitattributes` with `* -text` (no line-ending conversion). Windows
+  runners checked out the channel with CRLF (Git for Windows `core.autocrlf=true`
+  default), so `prepare_one.py` recorded CRLF-flavored source hashes in published
+  Windows `.mip.json` files; the Linux-based scheduled probe computed LF-flavored
+  hashes, never matched, and re-dispatched every `windows_x86_64` build nightly.
+  Checkouts are now byte-identical on all platforms. Expect one final rebuild
+  cycle for the Windows packages before the probe reports them up to date.
+
 - gptoolbox (Windows): drop `read_mesh_from_xml` and `read_triangle_mesh` from the
   Windows build (ships 56 MEX there, was 58). Both are broken on Windows by an
   upstream gptoolbox bug — each extracts the input file path only inside a POSIX
