@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix install instructions in the sedumi and fmmlib2d READMEs to use the
+  `mip-org/dev` channel slug.
 - Windows vcpkg deps: cache port binaries on a GitHub Packages NuGet feed
   instead of `actions/cache`. The old design tarred the whole archives dir under
   one write-once key shared by every package, so the first job to save (always
