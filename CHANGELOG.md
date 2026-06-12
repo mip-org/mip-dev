@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- glibc gate: don't die silently on binaries with no versioned GLIBC
+  references. The per-binary `max=$(objdump | grep ...)` assignment ran under
+  the runner's `bash -e -o pipefail`, so a binary whose libc calls the compiler
+  inlined away (grep exits 1) killed the step before any output — sedumi's
+  Linux build hit this after the gcc-toolset-10 swap left 10 of its 34 MEX
+  with no versioned references. Such binaries cannot violate the floor; report
+  them as OK.
+
+- sedumi: extend the channel test beyond the single small LP so every shipped
+  MEX is exercised (the coverage check failed with 10 of 34 MEX never loaded).
+  Adds a sparse LP with dense columns (triggers the dense-column
+  factorization), an SOCP, and an SDP. Verified 34/34 coverage against a
+  CI-identical Linux build (ubi8 + gcc-toolset-10 + R2022a).
+
 - Fix install instructions in the sedumi and fmmlib2d READMEs to use the
   `mip-org/dev` channel slug.
 - Windows vcpkg deps: cache port binaries on a GitHub Packages NuGet feed
