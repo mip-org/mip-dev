@@ -589,16 +589,35 @@ jobs:
             "C:\Program Files\Git\mingw64"
           )
           # Fast path: [IO.Directory]::Move (Win32 MoveFile) is a metadata-only
-          # same-volume rename (~ms). PowerShell's Move-Item instead recursively
-          # copies the tree, which takes minutes on the multi-million-file Visual
-          # Studio dir — so use it only as the fallback if the atomic move throws
-          # (e.g. a cross-volume path or a quirk), preserving the prior behavior.
-          # Move-Item swallows its own errors; "Verify strip" below is the hard
-          # gate either way.
+          # same-volume rename (~ms). It fails (ACCESS_DENIED) while ANY process
+          # holds a handle anywhere under the tree — on a fresh runner that pin
+          # is transient (a Defender scan, ngen, a VS background service), so
+          # retry against a shared 60s budget instead of bailing to the fallback
+          # on the first throw. Only a path still blocked after the budget falls
+          # back to Move-Item, which degrades to a recursive copy+delete on a
+          # pinned tree (~5 min on the VS dir) — kept as the last resort to
+          # preserve prior behavior. Move-Item swallows its own errors; "Verify
+          # strip" below is the hard gate either way.
+          $deadline = [DateTime]::UtcNow.AddSeconds(60)
           foreach ($p in $paths) {
-            if (Test-Path $p) {
-              try { [System.IO.Directory]::Move($p, "$p.deleted") }
-              catch { Move-Item -Force -ErrorAction SilentlyContinue $p "$p.deleted" }
+            if (-not (Test-Path $p)) { continue }
+            $sw = [Diagnostics.Stopwatch]::StartNew()
+            $err = $null
+            while ($true) {
+              try { [System.IO.Directory]::Move($p, "$p.deleted"); break }
+              catch {
+                $err = $_
+                if ([DateTime]::UtcNow -ge $deadline) { break }
+                Start-Sleep -Seconds 2
+                $err = $null
+              }
+            }
+            if ($null -eq $err) {
+              Write-Host ("  renamed ({0:n1}s): {1}" -f $sw.Elapsed.TotalSeconds, $p)
+            } else {
+              Write-Host ("  rename still blocked after {0:n1}s ({1}); Move-Item fallback: {2}" -f `
+                $sw.Elapsed.TotalSeconds, $err.Exception.Message, $p)
+              Move-Item -Force -ErrorAction SilentlyContinue $p "$p.deleted"
             }
           }
 

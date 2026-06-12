@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Windows strip: retry the rename for up to 60s before falling back to
+  `Move-Item`. An NTFS directory rename fails while any process holds a handle
+  anywhere under the tree; on a fresh runner that pin is transient (Defender
+  scan, ngen, VS background services), but the old code fell back on the first
+  throw, and a blocked `Move-Item` degrades to a recursive copy+delete — ~5 min
+  on the Visual Studio tree (hit 1 of 8 Windows runs on June 12, vs 5–12s for
+  the rename path). Waiting out the handle keeps the metadata-only rename;
+  per-path logging now records which tree was pinned and for how long.
+
 - glibc gate: don't die silently on binaries with no versioned GLIBC
   references. The per-binary `max=$(objdump | grep ...)` assignment ran under
   the runner's `bash -e -o pipefail`, so a binary whose libc calls the compiler
