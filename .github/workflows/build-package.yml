@@ -387,10 +387,19 @@ jobs:
           fail=0
           found=0
           while IFS= read -r f; do
-            max=$(objdump -T "$f" 2>/dev/null | grep -oE 'GLIBC_[0-9.]+' \
-                  | sed 's/GLIBC_//' | sort -V | tail -1)
-            [ -z "$max" ] && continue
             found=1
+            # `|| true`: a binary with no versioned GLIBC reference at all (e.g.
+            # a small pure-C MEX whose only libc calls the compiler inlines
+            # away) makes grep exit 1, and under the runner's `bash -e -o
+            # pipefail` a bare var=$(pipeline) assignment then kills the step
+            # silently, before any output. Such binaries cannot violate the
+            # floor; report them as OK instead.
+            max=$(objdump -T "$f" 2>/dev/null | grep -oE 'GLIBC_[0-9.]+' \
+                  | sed 's/GLIBC_//' | sort -V | tail -1 || true)
+            if [ -z "$max" ]; then
+              echo "  OK   $(basename "$f"): no versioned GLIBC references"
+              continue
+            fi
             highest=$(printf '%s\n2.28\n' "$max" | sort -V | tail -1)
             if [ "$highest" = "2.28" ]; then
               echo "  OK   $(basename "$f"): max GLIBC_$max"
