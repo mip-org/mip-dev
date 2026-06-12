@@ -45,7 +45,7 @@ the bundle — download from the upstream repository if needed.
 ## Install
 
 ```matlab
-mip install --channel mip-org/mip-dev sedumi
+mip install --channel mip-org/dev sedumi
 mip load sedumi
 ```
 
