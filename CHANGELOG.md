@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- site: derive the channel identifier by stripping the `mip-` repo prefix,
+  so install commands and the page title show `<owner>/<channel>` (e.g.
+  `mip-org/dev`) instead of the raw repo name `mip-org/mip-dev`.
+
 - spm@master: migrated from mip-staging. Neuroimaging toolbox (SPM); MEX
   compiled on `linux_x86_64`/`macos_arm64` via the upstream `src/Makefile`,
   with an `any` pure-MATLAB fallback. Dropped staging's `macos_x86_64`
