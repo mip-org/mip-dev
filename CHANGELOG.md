@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add mesh2d@master (any): MESH2D — Delaunay-refinement / Frontal-Delaunay
+  unstructured triangular mesh generation. Pure MATLAB; depends on inpoly
+  (its poly-test copy is dropped). Keeps its bundled aabb-tree, which is a
+  richer variant than the aabb_tree package (adds findball/findline/etc.).
+
 - Add find_tria@master (any): FINDTRIA — fast spatial queries (point-in-simplex
   / intersection) for collections of d-simplexes. Pure MATLAB; depends on
   aabb_tree (its vendored copy is dropped in favour of that package).
