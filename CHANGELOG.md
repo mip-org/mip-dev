@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add mole@1.2.0 (any): MOLE (Mimetic Operators Library Enhanced) — high-order
+  mimetic discretizations (grad/div/laplacian/curl) for PDEs on staggered grids.
+  Pure MATLAB; only the MATLAB/Octave implementation (src/matlab_octave) is
+  packaged (the separate C++ library is not).
+
 - Add gramm@3.1.2 (any): gramm — a grammar-of-graphics plotting toolbox for
   MATLAB (ggplot2-style). Pure MATLAB. Only the toolbox `gramm/` directory is
   packaged (the repo's large sample_data/images/paper dirs are excluded).
