@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add gramm@3.1.2 (any): gramm — a grammar-of-graphics plotting toolbox for
+  MATLAB (ggplot2-style). Pure MATLAB. Only the toolbox `gramm/` directory is
+  packaged (the repo's large sample_data/images/paper dirs are excluded).
+
 - Add spot@1.2 (any, linux_x86_64, macos_arm64, windows_x86_64): Spot — a
   linear-operator toolbox for matrix-free linear algebra (van den Berg &
   Friedlander). Mostly pure MATLAB with an `any` build; the four bundled Rice
