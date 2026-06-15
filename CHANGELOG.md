@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add inpoly@master (any): INPOLY, a fast point(s)-in-polygon test for general
+  (non-convex, multiply-connected) polygons. Pure MATLAB (the bundled
+  `inpoly2_oct.cpp` is an Octave-only accelerator, unused on MATLAB). No
+  upstream release tags, so it tracks the default branch.
+
 - Add rktoolbox@2.9 (any): the Rational Krylov Toolbox (rational Arnoldi,
   RKFIT, and the RKFUN class). Pure MATLAB, fetched from the project's zip
   (no git repo / versioned URL); the archive's top-level `rktoolbox/` folder is
