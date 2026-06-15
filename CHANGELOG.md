@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- dotenv@1.1.4: migrated from mip-staging. Pure-MATLAB `.env` loader, `any`
+  architecture. Upstream license is a MathWorks-restricted BSD-3-Clause
+  variant (`LicenseRef-MathWorks`).
+
 - matlab_progressbar@3.4.1: migrated from mip-staging. Pure-MATLAB
   TQDM-style progress bar, `any` architecture.
 
