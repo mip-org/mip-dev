@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- ci: assemble-index workflow now also runs on pushes to `main` that touch
+  `site/`, so site changes are redeployed without a manual dispatch.
+
 - site: derive the channel identifier by stripping the `mip-` repo prefix,
   so install commands and the page title show `<owner>/<channel>` (e.g.
   `mip-org/dev`) instead of the raw repo name `mip-org/mip-dev`.

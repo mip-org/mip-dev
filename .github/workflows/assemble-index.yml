@@ -1,12 +1,16 @@
 name: Assemble Index
 
-# Manual-only utility: rebuild the channel index from existing GitHub
-# Releases and redeploy GitHub Pages, without triggering any package
-# build. Useful after deleting/restoring a release or to refresh the
-# index out-of-band from build-package.yml.
+# Rebuild the channel index from existing GitHub Releases and redeploy
+# GitHub Pages, without triggering any package build. Runs manually
+# (e.g. after deleting/restoring a release) and automatically on pushes
+# to main that change the site assets.
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
 
 permissions:
   contents: read
