@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- cmocean@main: migrated from mip-staging. Pure-MATLAB perceptually-uniform
+  colormaps, `any` architecture. Tracks the upstream default branch (no
+  pinned version).
+
 - docmaker@0.7: migrated from mip-staging. Pure-MATLAB toolbox-documentation
   generator, `any` architecture. Ships the upstream `tbx/` subtree
   (`docmaker`, `docmakerdoc`).
