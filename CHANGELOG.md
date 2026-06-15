@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add manopt@8.0.0 (any, linux_x86_64, macos_arm64, windows_x86_64): the Manopt
+  toolbox for optimization on manifolds. Pure-MATLAB core with an `any` build;
+  the two `manopt/tools` sparse-helper MEX (`spmaskmult`, `setsparseentries`)
+  are built from source on the three native arches. The bundled TTeMPS
+  tensor-train sub-toolbox (`manopt/manifolds/ttfixedrank`, the
+  `fixedTTrankfactory` manifold) is dropped — it vendors a third-party library
+  needing several extra MEX (incl. OpenMP variants upstream's installer skips)
+  for one niche manifold.
+
 - Add cvx@2.2.2 (linux_x86_64, macos_arm64, windows_x86_64): the CVX disciplined
   convex programming modeling system. Sourced from the cvxr/CVX git tree (no
   bundled solvers / prebuilt binaries); the two presolver MEX helpers are built
