@@ -1,0 +1,5 @@
+source:
+  # Track the default branch (master): the latest tagged release (3.0.0) has a
+  # bug that breaks the core figure->Plotly conversion (an undefined `toC` in
+  # extractAxisData.m, fixed on master). No newer release tag exists.
+  git: "https://github.com/plotly/plotly_matlab"
