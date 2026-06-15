@@ -48,7 +48,7 @@ macOS `libc++` is OS-provided; Apple Clang does not accept `-static-libstdc++`, 
 
 Two post-install test scripts are shipped:
 
-- `test_spm_mex.m` — run on MEX-enabled architectures. Exercises the pure-MATLAB layer plus three MEX entry points: `spm_bsplinc` (MEX-only, no MATLAB fallback — catches a missing/broken build loudly), `spm_cat`, and `spm_jsonread`.
+- `test_spm_mex.m` — run on MEX-enabled architectures. Checks the pure-MATLAB layer plus three MEX entry points for correct behaviour — `spm_bsplinc` (MEX-only, no MATLAB fallback — catches a missing/broken build loudly), `spm_cat`, and `spm_jsonread` — and then force-loads every shipped MEX (a dynamic sweep that invokes each binary once from its own directory) so the channel's all-MEX-exercised gate confirms every binary loads on the target machine.
 - `test_spm.m` — run on the `[any]` fallback. Exercises only the pure-MATLAB layer (`spm_file`, `spm_str_manip`, `spm_platform`) so the build doesn't error on architectures without MEX.
 
 ## Upstream compilation reference

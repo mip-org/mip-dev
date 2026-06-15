@@ -7,6 +7,11 @@
   with an `any` pure-MATLAB fallback. Dropped staging's `macos_x86_64`
   build entry (not a supported dev channel architecture). Tracks the
   upstream `main` branch (no pinned version). ~130 MB bundles.
+  `test_spm_mex.m` reworked to satisfy the channel's all-MEX-exercised gate
+  (issue #16): it keeps the three functional MEX checks and adds a dynamic
+  sweep that force-loads every shipped MEX (including the `private/`,
+  `@class/private/` and bundled fieldtrip/bemcp/FieldMap binaries) from each
+  one's own directory.
 
 - dotenv@1.1.4: migrated from mip-staging. Pure-MATLAB `.env` loader, `any`
   architecture. Upstream license is a MathWorks-restricted BSD-3-Clause

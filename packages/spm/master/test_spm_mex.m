@@ -48,4 +48,37 @@ assert(isstruct(j) && isfield(j, 'a') && isfield(j, 'b'), ...
 assert(j.a == 1, sprintf('spm_jsonread: j.a = %g, expected 1', j.a));
 assert(isequal(j.b(:)', [2 3]), 'spm_jsonread: j.b was not [2 3]');
 
+%% --- Channel gate: every shipped MEX must load (issue #16) -------------
+% SPM ships ~70 MEX spanning the core plus the bundled externals under
+% external/fieldtrip, external/bemcp and toolbox/FieldMap. Many live in
+% private/ or @class/private/ folders (so they are not callable by bare
+% name) and most require domain-specific inputs, so genuinely exercising
+% each is impractical. The channel gate (assert_all_mex_exercised in
+% scripts/test_one.m) only requires that every shipped MEX was loaded --
+% i.e. appears in `inmem` -- which catches the real failure mode: a MEX
+% that will not load on the target machine (missing symbol, bad linkage,
+% wrong arch). We force each binary to load by invoking it once from its
+% own directory (so private / class-private MEX resolve), inside a
+% try/catch because a no-argument call is expected to error *after* the
+% binary has been loaded. The three MEX above are additionally checked for
+% correct behaviour; here we only require a clean load. Enumerating the
+% MEX dynamically keeps this in step with the master-tracked upstream.
+fprintf('Force-loading every shipped MEX...\n');
+spmRoot = fileparts(which('spm'));
+mexFiles = dir(fullfile(spmRoot, '**', ['*.' mexext]));
+origDir = pwd;
+restoreDir = onCleanup(@() cd(origDir));
+for k = 1:numel(mexFiles)
+    [~, name] = fileparts(mexFiles(k).name);
+    fprintf('  [%d/%d] %s\n', k, numel(mexFiles), name);
+    cd(mexFiles(k).folder);
+    try
+        feval(name);
+    catch
+        % expected: most MEX reject a no-argument call once loaded
+    end
+end
+cd(origDir);
+fprintf('Force-loaded %d MEX binaries.\n', numel(mexFiles));
+
 fprintf('SUCCESS\n');
