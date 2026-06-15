@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- spm@master (Windows): add `windows_x86_64` MEX build via a new
+  `compile_windows.m`. SPM's upstream Makefile assumes a Unix shell, so
+  rather than reproduce that on the runner, `compile_windows.m` drives the
+  identical compilations as direct `mex` calls (the channel's native-Windows
+  convention) — the `spm_vol_utils` static archive (MinGW `ar`), the ~30 core
+  MEX, the `@file_array`/`@gifti`/`@xmltree`/`FieldMap` subdir MEX, and the
+  bemcp/fieldtrip externals including fieldtrip's `external-install` copy
+  layout. MinGW links the runtime statically (`mingw64.xml`). Windows now uses
+  `test_spm_mex.m` (the all-MEX sweep) instead of the pure-MATLAB fallback.
+
 - ci: assemble-index workflow now also runs on pushes to `main` that touch
   `site/`, so site changes are redeployed without a manual dispatch.
 

@@ -13,5 +13,8 @@ builds:
   - architectures: [linux_x86_64, macos_arm64]
     compile_script: compile.m
     test_script: test_spm_mex.m
+  - architectures: [windows_x86_64]
+    compile_script: compile_windows.m
+    test_script: test_spm_mex.m
   - architectures: [any]
     test_script: test_spm.m

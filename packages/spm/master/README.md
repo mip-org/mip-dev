@@ -30,19 +30,22 @@ The full upstream SPM source tree is bundled, including all data files (`tpm/`, 
 
 | Architecture | MEX compiled? | Test script |
 | --- | --- | --- |
-| `linux_x86_64` | yes | `test_spm_mex.m` |
-| `macos_arm64`  | yes | `test_spm_mex.m` |
-| `windows_x86_64` and any other | **no** (pure-MATLAB fallback) | `test_spm.m` |
+| `linux_x86_64`   | yes | `test_spm_mex.m` |
+| `macos_arm64`    | yes | `test_spm_mex.m` |
+| `windows_x86_64` | yes | `test_spm_mex.m` |
+| any other        | **no** (pure-MATLAB fallback) | `test_spm.m` |
 
-On the two compiled architectures, every MEX file in the upstream source tree is rebuilt from source via SPM's own `src/Makefile` system. That covers the ~30 MEX files at the SPM root, the sub-directory MEX files under `@file_array/private/`, `@gifti/private/`, `@xmltree/private/`, and `toolbox/FieldMap/`, plus the external `fieldtrip` and `bemcp` MEX layers (`make external && make external-install`).
+On the three compiled architectures, every MEX file in the upstream source tree is rebuilt from source. That covers the ~30 MEX files at the SPM root, the sub-directory MEX files under `@file_array/private/`, `@gifti/private/`, `@xmltree/private/`, and `toolbox/FieldMap/`, plus the external `fieldtrip` and `bemcp` MEX layers. On Linux/macOS this is driven through SPM's own `src/Makefile` system (`compile.m`); on Windows, where the Makefile's Unix-shell assumptions don't hold, `compile_windows.m` reproduces the identical compilations as direct `mex` calls (including the `spm_vol_utils` static archive and the fieldtrip `external-install` layout).
 
-On architectures that fall through to the `[any]` build, **no MEX binaries are shipped** — the mip bundling pipeline strips pre-existing `.mex*` files from the source tree before building. The pure-MATLAB layer of SPM still loads and runs, but any function that requires a compiled MEX (e.g. `spm_bsplinc`, `spm_diffeo`, `spm_field`, most of `spm_mesh_*`) will error when called. Windows users who need full functionality should install SPM directly from the [SPM website](https://www.fil.ion.ucl.ac.uk/spm/).
+On architectures that fall through to the `[any]` build, **no MEX binaries are shipped** — the mip bundling pipeline strips pre-existing `.mex*` files from the source tree before building. The pure-MATLAB layer of SPM still loads and runs, but any function that requires a compiled MEX (e.g. `spm_bsplinc`, `spm_diffeo`, `spm_field`, most of `spm_mesh_*`) will error when called.
 
 ## Static linking
 
 On Linux, `compile.m` patches `src/Makefile.var` to append `-static-libstdc++ -static-libgcc` to `MEXOPTS` so the two C++ MEX files (`spm_mesh_dist`, `spm_mesh_geodesic`) do not depend on a specific end-user libstdc++ ABI. The remaining SPM MEX files are pure C and only link the OS-provided `libc` / `libm` plus MATLAB's own `libmx` / `libmex`.
 
 macOS `libc++` is OS-provided; Apple Clang does not accept `-static-libstdc++`, so no patch is needed there.
+
+On Windows, the MinGW-w64 toolchain is selected via MATLAB's `mingw64.xml`, which links the runtime statically, so the `.mexw64` files carry no MinGW runtime DLL dependency. The static `spm_vol_utils` archive is built with MinGW `ar`, matching the upstream MINGW64 build.
 
 ## Tests
 
