@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add geometry_processing_package@master (any): Geometry Processing Package
+  (Computational Geometry Group) — triangle-mesh I/O (OBJ/OFF/PLY), discrete
+  operators (Laplace-Beltrami, gradient, areas), topology utilities, and
+  parameterization. Pure MATLAB.
+
 - Add meshpart@v1.1 (any): Meshpart — a Matlab mesh-partitioning and graph-
   separator toolbox (Gilbert/Teng, modernized by Yingzhou Li) with spectral,
   coordinate, inertial, geometric, and nested-dissection methods. Pure MATLAB.
