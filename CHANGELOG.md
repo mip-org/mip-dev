@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add sc_toolbox@3.1.3 (any): the Schwarz-Christoffel Toolbox (Driscoll) —
+  conformal maps between the disk/half-plane/strip/rectangle and polygonal
+  regions. Pure MATLAB.
+
 - Add distmesh@main (any): DistMesh — a simple MATLAB generator for
   unstructured triangular/tetrahedral meshes (Persson & Strang). Pure MATLAB.
   Tracks the default branch (the modernized v1.2 line, CITATION 1.2.0, which
