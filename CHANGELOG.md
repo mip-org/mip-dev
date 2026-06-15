@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- docmaker@0.7: migrated from mip-staging. Pure-MATLAB toolbox-documentation
+  generator, `any` architecture. Ships the upstream `tbx/` subtree
+  (`docmaker`, `docmakerdoc`).
+
 - matlab2tikz@1.1.0: migrated from mip-staging. Pure-MATLAB figure-to-TikZ
   converter, `any` architecture. Ships the upstream `src/` tree; `src/dev/`
   is removed.
