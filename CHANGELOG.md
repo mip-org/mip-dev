@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- matlab_schemer@1.4.0: migrated from mip-staging. Pure-MATLAB editor/GUI
+  color-scheme tool, `any` architecture. Upstream `develop/` is removed.
+
 - matgeom@1.2.9: migrated from mip-staging. Pure-MATLAB geometry library
   (2D/3D), `any` architecture. Ships the six active MatGeom modules
   (`geom2d`, `polygons2d`, `graphs`, `geom3d`, `meshes3d`, `utils`) plus the
