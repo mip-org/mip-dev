@@ -190,13 +190,21 @@ compileDir(fullfile(root, 'external', 'bemcp'), opts, {
     });
 
 ftSrc = fullfile(root, 'external', 'fieldtrip', 'src');
-ftMex = {'read_24bit', 'read_16bit', 'ft_getopt', 'nanmean', 'nanstd', ...
-         'nansum', 'nanvar', 'meg_leadfield1', 'ptriproj', 'lmoutr', ...
-         'plgndr', 'solid_angle', 'routlm', 'ltrisect', 'plinproj', ...
-         'splint_gh'};
-for k = 1:numel(ftMex)
-    fprintf('  [fieldtrip] %s\n', ftMex{k});
-    mex(opts{:}, '-outdir', ftSrc, fullfile(ftSrc, [ftMex{k} '.c']));
+% Most fieldtrip MEX are single-source; the six geometry routines link
+% geometry.c (explicit rules in Makefile.fieldtrip). geometry.c is the only
+% extra source needed.
+ftSingle = {'read_24bit', 'read_16bit', 'ft_getopt', 'nanmean', 'nanstd', ...
+            'nansum', 'nanvar', 'meg_leadfield1', 'plgndr', 'splint_gh'};
+ftGeometry = {'ptriproj', 'lmoutr', 'solid_angle', 'routlm', 'ltrisect', ...
+              'plinproj'};
+geomSrc = fullfile(ftSrc, 'geometry.c');
+for k = 1:numel(ftSingle)
+    fprintf('  [fieldtrip] %s\n', ftSingle{k});
+    mex(opts{:}, '-outdir', ftSrc, fullfile(ftSrc, [ftSingle{k} '.c']));
+end
+for k = 1:numel(ftGeometry)
+    fprintf('  [fieldtrip] %s (+geometry)\n', ftGeometry{k});
+    mex(opts{:}, '-outdir', ftSrc, fullfile(ftSrc, [ftGeometry{k} '.c']), geomSrc);
 end
 
 % external-install: distribute the fieldtrip MEX into the private/ folders
