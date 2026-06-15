@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- matlab_progressbar@3.4.1: migrated from mip-staging. Pure-MATLAB
+  TQDM-style progress bar, `any` architecture.
+
 - matlab_tree@master: migrated from mip-staging. Pure-MATLAB tree data
   structure class, `any` architecture. Tracks the upstream default branch
   (no pinned version).
