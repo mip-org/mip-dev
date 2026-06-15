@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add jigsaw_matlab@master (linux_x86_64, macos_arm64, windows_x86_64): JIGSAW,
+  a Delaunay-based unstructured mesh generator. The MATLAB interface plus the
+  C++ backend (jigsaw/tripod/marche executables + shared lib), built from the
+  bundled `external/jigsaw` source via CMake (C++17). The backend is statically
+  linked (`-static-libstdc++ -static-libgcc` on Linux, static MSVC runtime on
+  Windows) so it runs when launched from within MATLAB. No pure-MATLAB fallback.
+
 - Add mesh2d@master (any): MESH2D — Delaunay-refinement / Frontal-Delaunay
   unstructured triangular mesh generation. Pure MATLAB; depends on inpoly
   (its poly-test copy is dropped). Keeps its bundled aabb-tree, which is a
