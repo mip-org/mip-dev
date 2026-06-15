@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add mmess@3.1 (any): M-M.E.S.S., the Matrix Equation Sparse Solver library
+  (low-rank solvers for large-scale Lyapunov/Riccati/Sylvester equations and
+  model order reduction). Pure MATLAB; paths mirror `mess_path` (the whole tree
+  minus the doc/build-only folders).
+
 - Add tensor_toolbox@3.8 (any, linux_x86_64, macos_arm64, windows_x86_64): the
   Tensor Toolbox for MATLAB (dense/sparse/decomposed N-way arrays; CP, Tucker,
   ...). Mostly pure MATLAB with an `any` build; the one compiled component,
