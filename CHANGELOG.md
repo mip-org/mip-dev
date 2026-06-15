@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add rktoolbox@2.9 (any): the Rational Krylov Toolbox (rational Arnoldi,
+  RKFIT, and the RKFUN class). Pure MATLAB, fetched from the project's zip
+  (no git repo / versioned URL); the archive's top-level `rktoolbox/` folder is
+  the one placed on the path.
+
 - Add mmess@3.1 (any): M-M.E.S.S., the Matrix Equation Sparse Solver library
   (low-rank solvers for large-scale Lyapunov/Riccati/Sylvester equations and
   model order reduction). Pure MATLAB; paths mirror `mess_path` (the whole tree
