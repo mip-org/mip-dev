@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add hm_toolbox@master (any): hm-toolbox — HODLR, HSS and HALR hierarchical
+  (rank-structured) matrices in MATLAB. Pure MATLAB; the package root on the
+  path is the whole install (the `@hodlr`/`@hss`/`@halr` classes resolve from
+  there). Tracks the default branch: the only release tag (`v1.0`, 2023) is two
+  years behind upstream.
+
 - Add plotly_matlab@master (any): convert MATLAB figures into interactive
   Plotly graphs (`fig2plotly`, `plotlyfig`). Pure MATLAB. Tracks the default
   branch rather than the latest tag (`3.0.0`), whose core figure→Plotly
