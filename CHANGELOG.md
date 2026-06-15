@@ -8,14 +8,6 @@
   there). Tracks the default branch: the only release tag (`v1.0`, 2023) is two
   years behind upstream.
 
-- Add plotly_matlab@master (any): convert MATLAB figures into interactive
-  Plotly graphs (`fig2plotly`, `plotlyfig`). Pure MATLAB. Tracks the default
-  branch rather than the latest tag (`3.0.0`), whose core figure→Plotly
-  conversion is broken by an undefined `toC` in `extractAxisData.m` (fixed on
-  master; no newer tag exists). The offline JS bundle and online-account setup
-  remain user-level steps (they write to `$HOME` / need credentials), as
-  upstream.
-
 - Add manopt@8.0.0 (any, linux_x86_64, macos_arm64, windows_x86_64): the Manopt
   toolbox for optimization on manifolds. Pure-MATLAB core with an `any` build;
   the two `manopt/tools` sparse-helper MEX (`spmaskmult`, `setsparseentries`)
