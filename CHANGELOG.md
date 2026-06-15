@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add geopdes@3.4.2 (any): GeoPDEs — a research tool for Isogeometric Analysis
+  (IGA) of PDEs (Vazquez & de Falco). Pure MATLAB; depends on nurbs. Only the
+  toolbox `inst/` tree is packaged (the `src/` `.cc` are Octave-only `.oct`
+  accelerators with pure-MATLAB equivalents).
+
 - Add nurbs@1.4.4 (any): the NURBS toolbox (Non-Uniform Rational B-Splines —
   curves/surfaces/volumes). Pure MATLAB (the upstream `.cc` files are
   Octave-only accelerators with `.m` equivalents). Sourced from the
