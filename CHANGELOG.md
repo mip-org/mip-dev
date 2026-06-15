@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- build_request_from_issue: parse build lines from the issue body only; the
+  title is no longer folded into the parsed text. A descriptive title such as
+  `build mip@numbl and mip@main` was read as a request line with two package
+  references and reported as a "multiple package references" error, even when
+  the body was well-formed (issue #18).
+
 - test_one: skip the `mip uninstall` step when the package being built is
   `mip` itself. Uninstalling the running package is a tricky edge case we
   don't want to exercise as part of the package build test.

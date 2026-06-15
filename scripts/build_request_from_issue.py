@@ -6,7 +6,8 @@ in this channel under `packages/<name>/<version>/`. The workflow does not
 clone, copy, or commit anything — it only dispatches the per-package build
 workflow on approval.
 
-Free-form input. Each non-empty line of the body (or title) may contain:
+Free-form input. The title only gates the workflow (it must start with
+`build`); it is not parsed. Each non-empty line of the body may contain:
 
   1. A package reference `<name>@<release>` (resolved to the channel
      folder `packages/<name>/<release>`) OR the keyword `all-packages`
@@ -78,12 +79,14 @@ PATH_FORMAT_HINT = "    <name>@<release>"
 
 
 def get_effective_body():
-    """Title + body, joined; lets users put the request in the title."""
-    body = os.environ.get("ISSUE_BODY", "")
-    title = os.environ.get("ISSUE_TITLE", "")
-    if title.strip():
-        return title + "\n\n" + body
-    return body
+    """The issue body — the sole source of build lines.
+
+    The title is purely a gate (it must start with `build`, enforced in the
+    workflow) and is intentionally NOT parsed: a descriptive title like
+    `build foo@main and bar@main` would otherwise be read as a request line
+    with multiple package references and reported as an error.
+    """
+    return os.environ.get("ISSUE_BODY", "")
 
 
 def list_all_packages(repo_root):

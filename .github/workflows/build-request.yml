@@ -66,7 +66,6 @@ jobs:
       - name: Build validation comment
         if: steps.check.outputs.proceed == 'true'
         env:
-          ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           mkdir -p .ci-tmp
@@ -155,7 +154,6 @@ jobs:
         if: steps.check.outputs.proceed == 'true'
         id: resolve
         env:
-          ISSUE_TITLE: ${{ github.event.issue.title }}
           ISSUE_BODY: ${{ github.event.issue.body }}
         run: |
           mkdir -p .ci-tmp
