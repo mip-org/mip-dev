@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add spherical_conformal_map@master (any): Spherical Conformal Map — a linear
+  (FLASH) method for conformally mapping genus-0 closed triangle meshes onto the
+  unit sphere (G. P. T. Choi). Pure MATLAB; the Mobius area-correction extension
+  ships but is not exercised in the channel test (needs the Optimization
+  Toolbox).
+
 - Add jsonlab@2.9.8 (any): JSONLab — encode/decode JSON, binary JSON
   (BJData/UBJSON/MessagePack), and JData/NIfTI/HDF5 in MATLAB (NeuroJSON).
   Pure MATLAB.
