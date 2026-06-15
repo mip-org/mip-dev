@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- matlab_tree@master: migrated from mip-staging. Pure-MATLAB tree data
+  structure class, `any` architecture. Tracks the upstream default branch
+  (no pinned version).
+
 - cmocean@main: migrated from mip-staging. Pure-MATLAB perceptually-uniform
   colormaps, `any` architecture. Tracks the upstream default branch (no
   pinned version).
