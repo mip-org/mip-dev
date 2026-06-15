@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add aabb_tree@master (any): AABB-TREE — d-dimensional axis-aligned
+  bounding-box tree construction and spatial queries (Darren Engwirda). Pure
+  MATLAB. Base spatial-query package for the dengwirda find/mesh family
+  (find_tria, find_poly, mesh2d depend on it).
+
 - Add inpoly@master (any): INPOLY, a fast point(s)-in-polygon test for general
   (non-convex, multiply-connected) polygons. Pure MATLAB (the bundled
   `inpoly2_oct.cpp` is an Octave-only accelerator, unused on MATLAB). No
