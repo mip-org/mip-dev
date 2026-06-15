@@ -96,6 +96,40 @@ def download_and_extract_zip(url, destination):
     os.remove(download_file)
 
 
+def download_and_extract_tarball(url, destination):
+    """Download and extract a (optionally gzip/bzip2/xz-compressed) tarball.
+
+    Useful for sources distributed only as tarballs, e.g. Octave-Forge packages.
+    """
+    import tarfile
+    download_file = "temp_download.tar"
+    print(f'  Downloading {url}...')
+    response = requests.get(url, timeout=30)
+    response.raise_for_status()
+    with open(download_file, 'wb') as f:
+        f.write(response.content)
+    print(f"  Extracting to {destination}...")
+    with tarfile.open(download_file, 'r:*') as t:
+        members = t.getmembers()
+        # Source tarballs conventionally wrap everything in a single top-level
+        # directory (e.g. nurbs-1.4.4/). Strip it so the package content lands
+        # directly in `destination`.
+        tops = {m.name.split('/', 1)[0] for m in members if m.name}
+        if len(tops) == 1:
+            prefix = tops.pop() + '/'
+            stripped = []
+            for m in members:
+                if m.name == prefix.rstrip('/'):
+                    continue  # the top-level directory entry itself
+                if m.name.startswith(prefix):
+                    m.name = m.name[len(prefix):]
+                    stripped.append(m)
+            t.extractall(destination, members=stripped)
+        else:
+            t.extractall(destination)
+    os.remove(download_file)
+
+
 def resolve_git_commit_hash(url, ref):
     result = subprocess.run(
         ["git", "ls-remote", url, ref],
@@ -245,6 +279,8 @@ def fetch_source(recipe, target_dir):
             )
         elif 'zip' in source:
             download_and_extract_zip(source['zip'], '.')
+        elif 'tarball' in source:
+            download_and_extract_tarball(source['tarball'], '.')
 
         for dir_name in source.get('remove_dirs', []):
             dir_path = os.path.join(target_dir, dir_name)

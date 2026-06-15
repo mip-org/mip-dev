@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Add nurbs@1.4.4 (any): the NURBS toolbox (Non-Uniform Rational B-Splines —
+  curves/surfaces/volumes). Pure MATLAB (the upstream `.cc` files are
+  Octave-only accelerators with `.m` equivalents). Sourced from the
+  Octave-Forge tarball; it is the geometry dependency of geopdes.
+
+- scripts/prepare_one.py: support a `tarball:` source (gzip/bzip2/xz),
+  stripping a single top-level directory — for sources distributed only as
+  tarballs (e.g. Octave-Forge packages).
+
 - Add bisection@master (any): BISECTION — a fast, robust, fully vectorized
   bisection root-finder for n-dimensional array inputs (Sky Sartorius). Pure
   MATLAB.
