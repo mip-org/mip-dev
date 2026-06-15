@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- test_one: skip the `mip uninstall` step when the package being built is
+  `mip` itself. Uninstalling the running package is a tricky edge case we
+  don't want to exercise as part of the package build test.
+
 - Windows strip: retry the rename for up to 60s before falling back to
   `Move-Item`. An NTFS directory rename fails while any process holds a handle
   anywhere under the tree; on a fresh runner that pin is transient (Defender
