@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- matgeom@1.2.9: migrated from mip-staging. Pure-MATLAB geometry library
+  (2D/3D), `any` architecture. Ships the six active MatGeom modules
+  (`geom2d`, `polygons2d`, `graphs`, `geom3d`, `meshes3d`, `utils`) plus the
+  package root; upstream `deprecated/` is removed.
+
 - build_request_from_issue: parse build lines from the issue body only; the
   title is no longer folded into the parsed text. A descriptive title such as
   `build mip@numbl and mip@main` was read as a request line with two package
