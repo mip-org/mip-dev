@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add disk_conformal_map@master (any): Disk Conformal Map — a fast method for
+  conformally mapping simply-connected open triangle meshes onto the unit disk
+  (Choi & Lui). Pure MATLAB; the Mobius area-correction extension ships but is
+  not exercised in the channel test (needs the Optimization Toolbox).
+
 - Add spherical_conformal_map@master (any): Spherical Conformal Map — a linear
   (FLASH) method for conformally mapping genus-0 closed triangle meshes onto the
   unit sphere (G. P. T. Choi). Pure MATLAB; the Mobius area-correction extension
