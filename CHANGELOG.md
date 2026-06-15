@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add spot@1.2 (any, linux_x86_64, macos_arm64, windows_x86_64): Spot — a
+  linear-operator toolbox for matrix-free linear algebra (van den Berg &
+  Friedlander). Mostly pure MATLAB with an `any` build; the four bundled Rice
+  Wavelet Toolbox MEX (`+spot/+rwt`: mdwt/midwt/mrdwt/mirdwt, backing the
+  wavelet operators) are built from source on the three native arches.
+
 - Add ultrasem@master (any): ultraSEM — an ultraspherical spectral element
   method for solving PDEs on unstructured polygonal/curved domains (Fortunato,
   Hale, Townsend). Pure MATLAB; self-contained (no Chebfun dependency).
