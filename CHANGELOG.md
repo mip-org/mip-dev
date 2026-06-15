@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add jigsaw_geo_matlab@master (any): JIGSAW(GEO) — worked examples and
+  geographic datasets for global/regional mesh generation with JIGSAW. No
+  library of its own (example.m + datasets); depends on jigsaw_matlab.
+
 - Add jigsaw_matlab@master (linux_x86_64, macos_arm64, windows_x86_64): JIGSAW,
   a Delaunay-based unstructured mesh generator. The MATLAB interface plus the
   C++ backend (jigsaw/tripod/marche executables + shared lib), built from the
