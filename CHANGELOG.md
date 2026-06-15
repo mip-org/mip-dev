@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add bisection@master (any): BISECTION — a fast, robust, fully vectorized
+  bisection root-finder for n-dimensional array inputs (Sky Sartorius). Pure
+  MATLAB.
+
 - Add sc_toolbox@3.1.3 (any): the Schwarz-Christoffel Toolbox (Driscoll) —
   conformal maps between the disk/half-plane/strip/rectangle and polygonal
   regions. Pure MATLAB.
