@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- matlab2tikz@1.1.0: migrated from mip-staging. Pure-MATLAB figure-to-TikZ
+  converter, `any` architecture. Ships the upstream `src/` tree; `src/dev/`
+  is removed.
+
 - matlab_schemer@1.4.0: migrated from mip-staging. Pure-MATLAB editor/GUI
   color-scheme tool, `any` architecture. Upstream `develop/` is removed.
 
