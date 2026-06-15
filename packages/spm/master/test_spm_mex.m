@@ -63,11 +63,15 @@ assert(isequal(j.b(:)', [2 3]), 'spm_jsonread: j.b was not [2 3]');
 % binary has been loaded. The three MEX above are additionally checked for
 % correct behaviour; here we only require a clean load. Enumerating the
 % MEX dynamically keeps this in step with the master-tracked upstream.
+% NB: do not register an onCleanup to restore the cwd. `mip test` runs this
+% script via `run()` in its own workspace, so an onCleanup variable created
+% here outlives the script and fires when `mip test` returns -- after it has
+% already restored the cwd -- re-entering the package directory. `mip test`
+% restores the cwd itself, so we only cd back synchronously below.
 fprintf('Force-loading every shipped MEX...\n');
 spmRoot = fileparts(which('spm'));
 mexFiles = dir(fullfile(spmRoot, '**', ['*.' mexext]));
 origDir = pwd;
-restoreDir = onCleanup(@() cd(origDir));
 for k = 1:numel(mexFiles)
     [~, name] = fileparts(mexFiles(k).name);
     fprintf('  [%d/%d] %s\n', k, numel(mexFiles), name);
