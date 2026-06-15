@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add tensor_toolbox@3.8 (any, linux_x86_64, macos_arm64, windows_x86_64): the
+  Tensor Toolbox for MATLAB (dense/sparse/decomposed N-way arrays; CP, Tucker,
+  ...). Mostly pure MATLAB with an `any` build; the one compiled component,
+  `lbfgsb_wrapper` (Stephen Becker's self-contained L-BFGS-B-C under
+  `libraries/lbfgsb`), is built from source on the three native arches.
+
 - Add hm_toolbox@master (any): hm-toolbox — HODLR, HSS and HALR hierarchical
   (rank-structured) matrices in MATLAB. Pure MATLAB; the package root on the
   path is the whole install (the `@hodlr`/`@hss`/`@halr` classes resolve from
