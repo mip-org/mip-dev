@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add jsonlab@2.9.8 (any): JSONLab — encode/decode JSON, binary JSON
+  (BJData/UBJSON/MessagePack), and JData/NIfTI/HDF5 in MATLAB (NeuroJSON).
+  Pure MATLAB.
+
 - Add mole@1.2.0 (any): MOLE (Mimetic Operators Library Enhanced) — high-order
   mimetic discretizations (grad/div/laplacian/curl) for PDEs on staggered grids.
   Pure MATLAB; only the MATLAB/Octave implementation (src/matlab_octave) is
