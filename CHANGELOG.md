@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Add cvx@2.2.2 (linux_x86_64, macos_arm64, windows_x86_64): the CVX disciplined
+  convex programming modeling system. Sourced from the cvxr/CVX git tree (no
+  bundled solvers / prebuilt binaries); the two presolver MEX helpers are built
+  from source and the channel's `sedumi` package supplies the solver via a
+  declared dependency. `compile.m` builds with `-fno-strict-aliasing -fwrapv`
+  because newer GCC `-O2` otherwise miscompiles these legacy C sources and
+  corrupts the heap (intermittent solve-time segfaults).
+
+- Add `adding_a_package.md`: a guide for adding packages to this channel,
+  adapted from mip-staging for this channel's conventions (per-arch dispatch /
+  scheduled / issue build model, `prepare_one.py`/`bundle_one.m`/`test_one.m`,
+  supported arch set without `macos_x86_64`, the strict version rules, the
+  all-MEX-exercised coverage gate, and the MinGW/direct-`mex` Windows pattern).
+
 - spm@master (Windows): add `windows_x86_64` MEX build via a new
   `compile_windows.m`. SPM's upstream Makefile assumes a Unix shell, so
   rather than reproduce that on the runner, `compile_windows.m` drives the
