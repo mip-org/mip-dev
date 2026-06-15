@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add spatialmath_matlab@master (any): Spatial Math Toolbox — rotations,
+  rigid-body transforms, quaternions, twists and spatial vectors in 2D/3D
+  (Peter Corke). Pure MATLAB. Dependency of robotics_toolbox_matlab.
+
+- Add robotics_toolbox_matlab@10.4 (any): Robotics Toolbox for MATLAB — serial-
+  link manipulator kinematics/dynamics, trajectories, and mobile robotics
+  (Peter Corke). Pure MATLAB; depends on spatialmath_matlab. The optional frne
+  RNE MEX is not built (the SerialLink class falls back to its M-file RNE). The
+  HTML docs and Simulink/hardware-interface/Octave directories are excluded.
+
 - Add disk_conformal_map@master (any): Disk Conformal Map — a fast method for
   conformally mapping simply-connected open triangle meshes onto the unit disk
   (Choi & Lui). Pure MATLAB; the Mobius area-correction extension ships but is
