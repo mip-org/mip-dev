@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add distmesh@main (any): DistMesh — a simple MATLAB generator for
+  unstructured triangular/tetrahedral meshes (Persson & Strang). Pure MATLAB.
+  Tracks the default branch (the modernized v1.2 line, CITATION 1.2.0, which
+  removed all C/MEX); the only release tags (v1.0/v1.1) are the older versions.
+
 - Add jigsaw_geo_matlab@master (any): JIGSAW(GEO) — worked examples and
   geographic datasets for global/regional mesh generation with JIGSAW. No
   library of its own (example.m + datasets); depends on jigsaw_matlab.
