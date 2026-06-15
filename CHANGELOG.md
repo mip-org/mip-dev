@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- spm@master: migrated from mip-staging. Neuroimaging toolbox (SPM); MEX
+  compiled on `linux_x86_64`/`macos_arm64` via the upstream `src/Makefile`,
+  with an `any` pure-MATLAB fallback. Dropped staging's `macos_x86_64`
+  build entry (not a supported dev channel architecture). Tracks the
+  upstream `main` branch (no pinned version). ~130 MB bundles.
+
 - dotenv@1.1.4: migrated from mip-staging. Pure-MATLAB `.env` loader, `any`
   architecture. Upstream license is a MathWorks-restricted BSD-3-Clause
   variant (`LicenseRef-MathWorks`).
