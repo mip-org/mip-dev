@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add find_tria@master (any): FINDTRIA — fast spatial queries (point-in-simplex
+  / intersection) for collections of d-simplexes. Pure MATLAB; depends on
+  aabb_tree (its vendored copy is dropped in favour of that package).
+
+- Add find_poly@master (any): FINDPOLY — fast point-in-polygon queries for
+  polygon collections. Pure MATLAB; depends on aabb_tree and inpoly (vendored
+  copies dropped in favour of those packages).
+
 - Add aabb_tree@master (any): AABB-TREE — d-dimensional axis-aligned
   bounding-box tree construction and spatial queries (Darren Engwirda). Pure
   MATLAB. Base spatial-query package for the dengwirda find/mesh family
