@@ -30,10 +30,10 @@ end
 if ispc
     linkFlags = '';
     extraCfg  = ' -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded';   % static MSVC CRT
-elseif ismac
-    linkFlags = '';                 % AppleClang: libc++ is OS-provided
-    extraCfg  = '';
 else
+    % Both the Linux and macOS builders use GCC (system gcc on Linux, Homebrew
+    % gcc on macOS), so the backend would otherwise link GCC's libstdc++/libgcc
+    % dynamically and fail to start under MATLAB's (older) bundled libstdc++.
     linkFlags = '-static-libstdc++ -static-libgcc';
     extraCfg  = '';
 end
