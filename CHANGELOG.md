@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add meshpart@v1.1 (any): Meshpart — a Matlab mesh-partitioning and graph-
+  separator toolbox (Gilbert/Teng, modernized by Yingzhou Li) with spectral,
+  coordinate, inertial, geometric, and nested-dissection methods. Pure MATLAB.
+  Geometric partitioning (geopart/geodice) needs the Statistics Toolbox; the
+  optional external METIS interface (metismex) is not bundled.
+
 - Add spatialmath_matlab@master (any): Spatial Math Toolbox — rotations,
   rigid-body transforms, quaternions, twists and spatial vectors in 2D/3D
   (Peter Corke). Pure MATLAB. Dependency of robotics_toolbox_matlab.
