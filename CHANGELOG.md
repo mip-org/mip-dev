@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add ultrasem@master (any): ultraSEM — an ultraspherical spectral element
+  method for solving PDEs on unstructured polygonal/curved domains (Fortunato,
+  Hale, Townsend). Pure MATLAB; self-contained (no Chebfun dependency).
+
 - Add geopdes@3.4.2 (any): GeoPDEs — a research tool for Isogeometric Analysis
   (IGA) of PDEs (Vazquez & de Falco). Pure MATLAB; depends on nurbs. Only the
   toolbox `inst/` tree is packaged (the `src/` `.cc` are Octave-only `.oct`
