@@ -12,13 +12,6 @@ setenv('LD_LIBRARY_PATH', '');
 setenv('DYLD_LIBRARY_PATH', '');
 restoreLd = onCleanup(@() restore_lib_path(origLd, origDyld)); %#ok<NASGU>
 
-% On Windows the channel's default MEX compiler is MinGW, but we build the
-% FINUFFT static library with MSVC (CMake's default generator). Re-select MSVC
-% for mex so the gateway links against the MSVC-built lib (matching C++ ABI).
-if ispc
-    setup_mex_compilers('windows_x86_64', 'msvc');
-end
-
 srcRoot = pwd;
 buildDir = fullfile(srcRoot, 'build_mex');
 
