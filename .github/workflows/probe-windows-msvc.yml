@@ -1,0 +1,100 @@
+name: Probe Windows MSVC
+
+# TEMPORARY investigation workflow (manual only). Diagnoses why MATLAB does not
+# detect the MSVC compiler for MEX on the windows_x86_64 builder, which blocks
+# building MSVC-based MEX packages (e.g. finufft). Delete once resolved.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: windows-latest
+    steps:
+      - name: List Visual Studio installations (vswhere)
+        shell: bash
+        run: |
+          set +e
+          VSWHERE="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"
+          echo "## vswhere -all"
+          "$VSWHERE" -all -prerelease -products '*' \
+            -format json -utf8 | tr -d '\r'
+          echo "## VC Tools (MSVC) versions present"
+          for vs in "/c/Program Files/Microsoft Visual Studio/2022"/* \
+                    "/c/Program Files (x86)/Microsoft Visual Studio/2022"/*; do
+            [ -d "$vs/VC/Tools/MSVC" ] && { echo "# $vs"; ls "$vs/VC/Tools/MSVC"; }
+          done
+          echo "## cl.exe on PATH?"
+          which -a cl 2>/dev/null || echo "(cl not on PATH)"
+
+      - name: Set up MATLAB (R2023a, matching the windows builder)
+        uses: matlab-actions/setup-matlab@v3
+        with:
+          cache: true
+          release: R2023a
+
+      - name: Write MSVC-detection probe script
+        shell: bash
+        run: |
+          cat > probe_msvc.m <<'EOF'
+          fprintf('MATLAB %s | root=%s\n', version, matlabroot);
+
+          % What MEX compiler configurations does MATLAB see?
+          for lang = {'C','C++'}
+              for status = {'Installed','Selected'}
+                  try
+                      cfgs = mex.getCompilerConfigurations(lang{1}, status{1});
+                      fprintf('--- %s / %s : %d config(s) ---\n', ...
+                          lang{1}, status{1}, numel(cfgs));
+                      for i = 1:numel(cfgs)
+                          c = cfgs(i);
+                          fprintf('  Name="%s" | Manufacturer="%s" | Version="%s"\n', ...
+                              c.Name, c.Manufacturer, c.Version);
+                          fprintf('     Location="%s" | MexOpt="%s"\n', ...
+                              c.Location, c.MexOpt);
+                      end
+                  catch e
+                      fprintf('  ERROR %s/%s: %s\n', lang{1}, status{1}, e.message);
+                  end
+              end
+          end
+
+          % Which mexopts XMLs ship with this MATLAB (MSVC ones reveal the
+          % supported VS version range in their <vcvarsall>/<conditions>)?
+          xmlDir = fullfile(matlabroot, 'bin', 'win64', 'mexopts');
+          fprintf('=== mexopts XMLs in %s ===\n', xmlDir);
+          d = dir(fullfile(xmlDir, '*.xml'));
+          for i = 1:numel(d)
+              fprintf('  %s\n', d(i).name);
+          end
+
+          % Print the MSVC C++ mexopts XML(s) so we can see the VS version
+          % range MATLAB probes for (e.g. [17.0,18.0)).
+          msvc = dir(fullfile(xmlDir, '*msvc*.xml'));
+          for i = 1:numel(msvc)
+              f = fullfile(xmlDir, msvc(i).name);
+              fprintf('===== %s =====\n', f);
+              disp(fileread(f));
+          end
+
+          % Try to actually select MSVC for C++ and report the outcome.
+          try
+              cc = mex.getCompilerConfigurations('C++', 'Installed');
+              vs = cc(arrayfun(@(c) contains(c.Name, 'Microsoft Visual'), cc));
+              if isempty(vs)
+                  fprintf('RESULT: no Microsoft Visual C++ configuration is Installed.\n');
+              else
+                  fprintf('RESULT: MSVC C++ available: %s\n', vs(1).Name);
+              end
+          catch e
+              fprintf('RESULT ERROR: %s\n', e.message);
+          end
+          EOF
+
+      - name: Run probe in MATLAB
+        uses: matlab-actions/run-command@v3
+        with:
+          command: "run('probe_msvc.m')"
