@@ -79,7 +79,7 @@ class IndexAssembler:
     def _list_valid_release_tags(self):
         """
         Build the set of release tags backed by a packages/<name>/<release>/
-        folder containing recipe.yaml. Tags use the same encoding as filenames:
+        folder containing source.yaml. Tags use the same encoding as filenames:
         '{name_with_underscores}-{release_version}'.
         """
         packages_dir = os.path.join(self.repo_root, 'packages')
@@ -98,7 +98,7 @@ class IndexAssembler:
                 if not os.path.isdir(release_folder):
                     continue
                 if not os.path.exists(
-                        os.path.join(release_folder, 'recipe.yaml')):
+                        os.path.join(release_folder, 'source.yaml')):
                     continue
                 valid_tags.add(
                     f"{name.replace('-', '_')}-{release_version}")

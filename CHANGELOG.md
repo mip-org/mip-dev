@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Rename each package's `recipe.yaml` to `source.yaml` and update all
+  references in the `mip-channel-tools` package and docs.
+
 - Consolidate the workflow Python helpers into a `mip-channel-tools` package
   under `tools/` (`mip-channel` CLI with subcommands: prepare, package-setup,
   upload, assemble-index, build-request, affected, scheduled-check). Workflows

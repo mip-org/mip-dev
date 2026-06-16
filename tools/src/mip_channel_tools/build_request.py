@@ -24,7 +24,7 @@ A package with no channel-side `mip.yaml`, or one that declares no
 supported architecture, cannot expand `all` and is reported as an error.
 
 `all-packages <arch>` dispatches every channel package (those with a
-`packages/<name>/<release>/recipe.yaml`) for the given arch, restricted
+`packages/<name>/<release>/source.yaml`) for the given arch, restricted
 to the architectures each package's `mip.yaml` declares. A specific arch
 (e.g. `linux_x86_64`) only emits packages whose mip.yaml declares that
 arch; `all` emits each package's full declared set. Packages without a
@@ -88,7 +88,7 @@ def get_effective_body():
 
 
 def list_all_packages(repo_root):
-    """Sorted list of every `packages/<name>/<version>` with a recipe.yaml."""
+    """Sorted list of every `packages/<name>/<version>` with a source.yaml."""
     pkgs = []
     pkgs_dir = repo_root / 'packages'
     if not pkgs_dir.is_dir():
@@ -99,7 +99,7 @@ def list_all_packages(repo_root):
         for ver_dir in sorted(name_dir.iterdir()):
             if not ver_dir.is_dir() or ver_dir.name.startswith('.'):
                 continue
-            if (ver_dir / 'recipe.yaml').is_file():
+            if (ver_dir / 'source.yaml').is_file():
                 pkgs.append(f"packages/{name_dir.name}/{ver_dir.name}")
     return pkgs
 

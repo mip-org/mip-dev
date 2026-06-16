@@ -9,7 +9,7 @@ Unlike a "build everything on every push" channel, builds here run **one
 automatically on push to `main` (only for the packages a push touches), daily
 by a scheduled probe, or manually via a GitHub issue. The end-to-end flow for
 one pair: [`mip-channel prepare`](tools/src/mip_channel_tools/prepare.py) clones
-the upstream source per `recipe.yaml` and overlays the channel-provided files;
+the upstream source per `source.yaml` and overlays the channel-provided files;
 [`scripts/bundle_one.m`](scripts/bundle_one.m) runs `mip bundle` (which sets up
 the MEX toolchain and runs `compile.m` if needed) to produce the `.mhl`;
 [`scripts/test_one.m`](scripts/test_one.m) installs/loads/tests the bundle and
@@ -82,7 +82,7 @@ Things to determine:
    - **A tagged release** — preferred for stability. The release directory and
      `mip.yaml` `version:` use the tag name with any `v`/`V` prefix stripped,
      normalized to a numeric form like `x`, `x.y`, or `x.y.z` (e.g. tag
-     `v1.4.1` → version `1.4.1`). The `recipe.yaml` `branch:` keeps the full
+     `v1.4.1` → version `1.4.1`). The `source.yaml` `branch:` keeps the full
      tag (`v1.4.1`). See [sedumi](packages/sedumi/1.3.8).
    - **The default branch (`main` or `master`)** — when the project has no
      tags, or you specifically want the latest development tip. Use `main` or
@@ -129,7 +129,7 @@ Things to determine:
    - Native shared libraries / archives that aren't MATLAB MEX (`.so`,
      `.dylib`, `.dll`, `.a`, `.lib`, `.jar`) are **not** auto-stripped.
      Evaluate per package whether they are build inputs (keep) or stale
-     artifacts (add to `remove_dirs` in `recipe.yaml`).
+     artifacts (add to `remove_dirs` in `source.yaml`).
 
 6. **Package name normalization.** Pick a single **canonical** name and use it
    identically in the directory name under `packages/`, the `name:` field in
@@ -157,7 +157,7 @@ Things to determine:
 
 7. **Existing `mip.yaml`.** If the upstream repository already ships a valid
    `mip.yaml` at the path that becomes the package root (after
-   `subdirectory`/`remove_dirs`), you don't need to provide one — `recipe.yaml`
+   `subdirectory`/`remove_dirs`), you don't need to provide one — `source.yaml`
    alone is enough. Most third-party projects won't ship one, so you'll be
    writing it.
 
@@ -167,7 +167,7 @@ Things to determine:
 
 ```
 packages/<name>/<release>/
-  recipe.yaml             # required — where to fetch the source from
+  source.yaml             # required — where to fetch the source from
   mip.yaml                # required unless the upstream repo provides one
   compile.m               # optional — only if MEX/native compilation is needed
   compile_windows.m       # optional — Windows-specific compile (see Step 5)
@@ -182,9 +182,9 @@ version (`1.2.9`) matching `mip.yaml` `version:`, or a branch name
 
 ---
 
-## Step 3 — Write `recipe.yaml`
+## Step 3 — Write `source.yaml`
 
-`recipe.yaml` tells the prepare step where to fetch the upstream source. It is
+`source.yaml` tells the prepare step where to fetch the upstream source. It is
 processed by [`mip-channel prepare`](tools/src/mip_channel_tools/prepare.py).
 
 ### Minimal form (clone default branch)
@@ -222,7 +222,7 @@ sources everything from upstream git repositories.
 `validate_channel_version_rules` in
 [`mip-channel prepare`](tools/src/mip_channel_tools/prepare.py) enforces:
 
-- **`recipe.yaml` must not contain a `version:` field.** The release directory
+- **`source.yaml` must not contain a `version:` field.** The release directory
   name *is* the version.
 - **`mip.yaml` `version:` must be blank or numeric** (`x`, `x.y`, `x.y.z`).
 - **The release directory name must equal either `mip.yaml`'s `version:` or
@@ -242,7 +242,7 @@ So the two valid shapes are:
   (`v1.4.1`) — git treats both the same for cloning.
 - `subdirectory:` is for repos that keep the MATLAB code under a nested folder
   (e.g. matGeom's code lives in `matGeom/` — see
-  [matgeom recipe.yaml](packages/matgeom/1.2.9/recipe.yaml)). Only with `git:`.
+  [matgeom source.yaml](packages/matgeom/1.2.9/source.yaml)). Only with `git:`.
 - `remove_dirs:` trims trees that shouldn't ship at all — pre-rendered HTML
   docs, deprecated/legacy code, developer scaffolding, or vendored heavy
   third-party code that `compile.m` disables. For `tests/`, `examples/`, and

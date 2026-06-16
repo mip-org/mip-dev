@@ -8,8 +8,8 @@ Usage:
       --architecture <arch>
 
 The command:
-  1. Reads recipe.yaml from the package release directory
-  2. Fetches source per recipe.yaml (git clone or zip download)
+  1. Reads source.yaml from the package release directory
+  2. Fetches source per source.yaml (git clone or zip download)
   3. Overlays channel-provided files (mip.yaml, compile.m, test scripts, ...)
   4. Validates channel version rules and architecture support
   5. Writes build/prepared/<name>-<release>/ ready for `mip bundle`
@@ -165,9 +165,9 @@ def compute_directory_hash(directory):
 
 
 def overlay_channel_files(release_folder, target_dir):
-    """Copy channel-provided files (everything except recipe.yaml) into target."""
+    """Copy channel-provided files (everything except source.yaml) into target."""
     for item in os.listdir(release_folder):
-        if item == 'recipe.yaml':
+        if item == 'source.yaml':
             continue
         src = os.path.join(release_folder, item)
         dst = os.path.join(target_dir, item)
@@ -198,7 +198,7 @@ def validate_channel_version_rules(mip_yaml_path, recipe, release_version):
     """See mip-channel-template README for the rules."""
     if 'version' in recipe:
         raise ValueError(
-            "recipe.yaml must not contain a 'version' field "
+            "source.yaml must not contain a 'version' field "
             "(release dir is the version)")
 
     with open(mip_yaml_path, 'r') as f:
@@ -302,9 +302,9 @@ def run(args):
               file=sys.stderr)
         return 2
 
-    recipe_path = os.path.join(release_folder, 'recipe.yaml')
+    recipe_path = os.path.join(release_folder, 'source.yaml')
     if not os.path.exists(recipe_path):
-        print(f"Error: no recipe.yaml in {release_folder}", file=sys.stderr)
+        print(f"Error: no source.yaml in {release_folder}", file=sys.stderr)
         return 2
 
     package_name = os.path.basename(os.path.dirname(release_folder))

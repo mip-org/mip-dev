@@ -195,7 +195,7 @@ macOS the only dynamic deps across all built MEX are `@rpath/libmx`,
   build (~6–10 min, every arch). Caching the CMake deps dir would need a stable
   build path (`compile.m` uses a random `tempname` today) and a pin-hash key —
   and the key is the hard part: the libigl/embree pins live in gptoolbox's
-  *fetched* source (`mex/cmake/libigl.cmake`), and `recipe.yaml` tracks branch
+  *fetched* source (`mex/cmake/libigl.cmake`), and `source.yaml` tracks branch
   `master`, not a commit, so a static `hashFiles` can't see upstream moves. A
   correct key needs the resolved gptoolbox commit (or pinning gptoolbox). Use
   **`actions/cache`**, **not** GitHub Releases (those are the `.mhl` channel).

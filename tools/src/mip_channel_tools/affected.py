@@ -8,7 +8,7 @@ Each affected package is expanded to every architecture declared in its
 `mip.yaml` (intersected with the channel's SUPPORTED_ARCHITECTURES). Recipe-
 only packages (no channel-side mip.yaml) expand to every supported arch.
 
-Packages whose `recipe.yaml` no longer exists at HEAD (deletions) are
+Packages whose `source.yaml` no longer exists at HEAD (deletions) are
 silently skipped.
 """
 
@@ -29,7 +29,7 @@ def affected_packages(changed_files, repo_root):
         if len(parts) < 3 or parts[0] != "packages":
             continue
         pkg_path = f"packages/{parts[1]}/{parts[2]}"
-        if (repo_root / pkg_path / "recipe.yaml").is_file():
+        if (repo_root / pkg_path / "source.yaml").is_file():
             pkgs.add(pkg_path)
     return sorted(pkgs)
 

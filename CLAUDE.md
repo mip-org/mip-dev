@@ -5,7 +5,7 @@ Guidance for working in this repository.
 ## What this is
 
 A MIP package channel. Packages live under `packages/<name>/<release>/` with
-a `recipe.yaml` and (usually) a `mip.yaml` declaring supported architectures.
+a `source.yaml` and (usually) a `mip.yaml` declaring supported architectures.
 Builds run one `(package, architecture)` pair at a time via GitHub Actions.
 
 ## Layout
