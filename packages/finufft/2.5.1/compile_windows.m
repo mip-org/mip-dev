@@ -28,7 +28,7 @@ cfgCmd = sprintf(['cmake -S "%s" -B "%s" -G "Visual Studio 17 2022" -A x64', ...
     ' -DFINUFFT_BUILD_TESTS=OFF', ...
     ' -DFINUFFT_BUILD_EXAMPLES=OFF', ...
     ' -DFINUFFT_ENABLE_INSTALL=OFF', ...
-    ' -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreadedDLL', ...   % dynamic CRT, matches MATLAB
+    ' -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded', ...      % static CRT (/MT)
     ' -DCMAKE_POLICY_DEFAULT_CMP0091=NEW'], srcRoot, buildDir);
 [status, output] = system(cfgCmd, '-echo');
 if status ~= 0
@@ -74,7 +74,13 @@ mexArgs = {fullfile(srcRoot, 'matlab', 'finufft.cpp'), ...
 if ~isempty(ducc0Path)
     mexArgs{end+1} = ducc0Path;
 end
-mexArgs{end+1} = 'COMPFLAGS=$COMPFLAGS /O2';
+% Static CRT (/MT) so the .mexw64 bakes in the MSVC C++ runtime and is
+% self-contained — the test runner strips the build environment, and MATLAB's
+% own (older) msvcp140.dll lacks symbols DUCC0 needs. Appending /MT after the
+% mexopts default /MD makes cl.exe warn (D9025) and use /MT; /NODEFAULTLIB
+% drops the dynamic-CRT import lib so the link is fully static.
+mexArgs{end+1} = 'COMPFLAGS=$COMPFLAGS /O2 /MT';
+mexArgs{end+1} = 'LINKFLAGS=$LINKFLAGS /NODEFAULTLIB:msvcrt';
 mexArgs{end+1} = '-output';
 mexArgs{end+1} = fullfile(srcRoot, 'matlab', 'finufft');
 mex(mexArgs{:});
