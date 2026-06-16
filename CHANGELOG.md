@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add finufft@2.5.1 (linux_x86_64): FINUFFT — fast parallel nonuniform FFTs
+  (types 1/2/3 in 1D/2D/3D), MATLAB interface (Flatiron Institute). The MEX is
+  built from source with CMake (DUCC0 FFT backend) and statically links the C++
+  runtime. compile.m clears LD_LIBRARY_PATH around the cmake/compiler calls so
+  MATLAB's bundled libstdc++ does not shadow the system toolchain.
+
 - Rename each package's `recipe.yaml` to `source.yaml` and update all
   references in the `mip-channel-tools` package and docs.
 

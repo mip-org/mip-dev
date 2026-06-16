@@ -1,0 +1,21 @@
+name: finufft
+description: "FINUFFT: fast, parallel nonuniform fast Fourier transforms (types 1, 2, 3 in 1D/2D/3D)."
+version: "2.5.1"
+license: "Apache-2.0"
+homepage: "https://finufft.readthedocs.io"
+repository: "https://github.com/flatironinstitute/finufft"
+dependencies: []
+
+# matlab/ holds the upstream m-file wrappers (finufft1d1.m, finufft_plan.m, ...)
+# and the compiled finufft MEX produced by compile.m.
+paths:
+  - path: "matlab"
+
+builds:
+  - architectures: [linux_x86_64]
+    compile_script: compile.m
+    test_script: test_finufft.m
+    setup:
+      # cmake is not present on the Linux (ubi8) builder.
+      linux:
+        - "dnf install -y cmake"
