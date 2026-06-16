@@ -12,11 +12,10 @@ Packages whose `recipe.yaml` no longer exists at HEAD (deletions) are
 silently skipped.
 """
 
-import argparse
 import sys
 from pathlib import Path
 
-from build_request_from_issue import arches_from_mip_yaml
+from .build_request import arches_from_mip_yaml
 
 
 def affected_packages(changed_files, repo_root):
@@ -35,16 +34,7 @@ def affected_packages(changed_files, repo_root):
     return sorted(pkgs)
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--changed-files", required=True,
-                    help="Path to a file with one changed path per line.")
-    ap.add_argument("--dispatch-file", required=True,
-                    help="Output TSV: <package_path>\\t<architecture>.")
-    ap.add_argument("--repo-root", default=".",
-                    help="Repo root (default: cwd).")
-    args = ap.parse_args()
-
+def run(args):
     repo_root = Path(args.repo_root).resolve()
 
     with open(args.changed_files) as f:
@@ -64,5 +54,14 @@ def main():
         print(f"  {row}", file=sys.stderr)
 
 
-if __name__ == "__main__":
-    main()
+def register(subparsers):
+    ap = subparsers.add_parser(
+        "affected",
+        help="Map changed files to (package, architecture) dispatches.")
+    ap.add_argument("--changed-files", required=True,
+                    help="Path to a file with one changed path per line.")
+    ap.add_argument("--dispatch-file", required=True,
+                    help="Output TSV: <package_path>\\t<architecture>.")
+    ap.add_argument("--repo-root", default=".",
+                    help="Repo root (default: cwd).")
+    ap.set_defaults(func=run)

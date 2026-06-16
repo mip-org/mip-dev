@@ -36,13 +36,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python dependencies
-        run: pip install requests pyyaml
+      - name: Install channel tooling
+        run: pip install ./tools
 
       - name: Assemble package index
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/assemble_index.py
+        run: python -m mip_channel_tools assemble-index
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

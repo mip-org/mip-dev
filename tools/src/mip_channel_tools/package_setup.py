@@ -5,7 +5,7 @@ Reads build/prepared/<pkg>/mip.yaml, finds the build entry whose
 `architectures:` list contains the requested architecture, and runs the
 shell script under that entry's `setup:` field for the current OS.
 
-The mip.yaml shape this script expects:
+The mip.yaml shape this command expects:
 
     builds:
       - architectures: [linux_x86_64, macos_arm64]
@@ -24,15 +24,14 @@ items are joined with newlines and run as one `bash -eu -o pipefail`
 script, so later items see variables/state from earlier items.
 
 Keys are optional. A missing key is a no-op on that OS. If the package
-declares no `setup:` block (or none for the current OS), this script
+declares no `setup:` block (or none for the current OS), this command
 exits 0.
 
 Block scalars (`|`, `>`) are intentionally avoided: mip's MATLAB-side
 YAML parser doesn't support them, and the same mip.yaml is consumed by
-both this Python script and `mip.bundle` in MATLAB.
+both this Python code and `mip.bundle` in MATLAB.
 """
 
-import argparse
 import os
 import shutil
 import subprocess
@@ -106,11 +105,7 @@ def bash_executable():
     sys.exit('package_setup: could not find a non-WSL bash on Windows')
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument('--architecture', required=True)
-    args = ap.parse_args()
-
+def run(args):
     mip_yaml_path = find_prepared_mip_yaml()
     if mip_yaml_path is None:
         print('package_setup: no prepared dir; nothing to do.')
@@ -154,5 +149,9 @@ def main():
     )
 
 
-if __name__ == '__main__':
-    main()
+def register(subparsers):
+    p = subparsers.add_parser(
+        "package-setup",
+        help="Run a prepared package's per-OS setup commands.")
+    p.add_argument('--architecture', required=True)
+    p.set_defaults(func=run)

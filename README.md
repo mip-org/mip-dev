@@ -12,7 +12,7 @@ Changes outside `packages/` (scripts, mexopts, workflows, site, README) do not t
 
 ## Scheduled rebuild
 
-Daily at 06:00 UTC, `scheduled-build.yml` probes every (package, architecture) pair in the channel by running `prepare_one.py` for each. A pair "needs rebuilding" iff its `.mhl` is missing on GitHub Releases or its source hash no longer matches — typically because an upstream git branch (e.g. `master`, `main`) advanced. Pairs that need rebuilding are dispatched to `build-package.yml`.
+Daily at 06:00 UTC, `scheduled-build.yml` probes every (package, architecture) pair in the channel by running `mip-channel prepare` for each. A pair "needs rebuilding" iff its `.mhl` is missing on GitHub Releases or its source hash no longer matches — typically because an upstream git branch (e.g. `master`, `main`) advanced. Pairs that need rebuilding are dispatched to `build-package.yml`.
 
 The workflow can also be invoked manually:
 

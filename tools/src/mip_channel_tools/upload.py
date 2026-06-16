@@ -9,18 +9,17 @@ The .mip.json gets its mhl_sha256 field populated before upload so the
 client can verify integrity after download.
 
 Usage:
-  python scripts/upload_one.py --mhl build/bundled/foo-1.0-any.mhl
-  python scripts/upload_one.py        # auto-discovers the single .mhl
-                                      # under build/bundled/
+  mip-channel upload --mhl build/bundled/foo-1.0-any.mhl
+  mip-channel upload        # auto-discovers the single .mhl
+                            # under build/bundled/
 """
 
 import os
 import sys
 import json
 import hashlib
-import argparse
 import subprocess
-from channel_config import get_github_repo, release_tag_from_mhl
+from .config import get_github_repo, release_tag_from_mhl
 
 
 def _sha256_of_file(path):
@@ -93,13 +92,7 @@ def _discover_single_mhl(bundled_dir):
     return mhls[0]
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Upload a single bundled .mhl to its GitHub Release')
-    parser.add_argument(
-        '--mhl', help='Path to .mhl (default: auto-discover in build/bundled)')
-    args = parser.parse_args()
-
+def run(args):
     mhl_path = args.mhl
     if not mhl_path:
         bundled_dir = os.path.join(os.curdir, 'build', 'bundled')
@@ -122,5 +115,10 @@ def main():
     return 0 if ok else 1
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+def register(subparsers):
+    parser = subparsers.add_parser(
+        "upload",
+        help="Upload a single bundled .mhl to its GitHub Release.")
+    parser.add_argument(
+        '--mhl', help='Path to .mhl (default: auto-discover in build/bundled)')
+    parser.set_defaults(func=run)

@@ -2,7 +2,7 @@
 """
 Assemble package index from GitHub Release assets.
 
-This script:
+This command:
 1. Lists all releases in the repo
 2. For each release, finds .mhl.mip.json assets
 3. Downloads each .mip.json file
@@ -10,18 +10,16 @@ This script:
 5. Copies site/* (static index.html and assets) alongside it
 6. Saves everything to build/gh-pages/ for GitHub Pages deployment
 
-This script should be run after upload_packages.py
+This command should be run after `mip-channel upload`.
 """
 
 import os
-import sys
 import json
 import shutil
-import argparse
 import subprocess
 import tempfile
 from datetime import datetime
-from channel_config import get_github_repo, get_base_url
+from .config import get_github_repo, get_base_url
 
 
 def _version_sort_key(version_str):
@@ -44,13 +42,15 @@ def _package_sort_key(pkg):
 class IndexAssembler:
     """Handles assembling package index from GitHub Release assets."""
 
-    def __init__(self, dry_run=False):
+    def __init__(self, repo_root='.', dry_run=False):
         """
         Initialize the index assembler.
 
         Args:
+            repo_root: Path to the channel checkout (holds packages/ and site/).
             dry_run: If True, simulate operations without actual downloading
         """
+        self.repo_root = os.path.abspath(repo_root)
         self.dry_run = dry_run
         self.github_repo = get_github_repo()
 
@@ -82,9 +82,7 @@ class IndexAssembler:
         folder containing recipe.yaml. Tags use the same encoding as filenames:
         '{name_with_underscores}-{release_version}'.
         """
-        project_root = os.path.dirname(
-            os.path.dirname(os.path.abspath(__file__)))
-        packages_dir = os.path.join(project_root, 'packages')
+        packages_dir = os.path.join(self.repo_root, 'packages')
 
         if not os.path.isdir(packages_dir):
             print(f"  Warning: packages/ directory not found at {packages_dir}")
@@ -172,8 +170,7 @@ class IndexAssembler:
         Copy the static site assets (index.html, etc.) from site/ into
         the GitHub Pages output directory.
         """
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        site_dir = os.path.join(project_root, 'site')
+        site_dir = os.path.join(self.repo_root, 'site')
         if not os.path.isdir(site_dir):
             print(f"  Warning: no site/ directory at {site_dir}, skipping static copy")
             return
@@ -257,8 +254,7 @@ class IndexAssembler:
         }
 
         # Create output directory for GitHub Pages
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        gh_pages_dir = os.path.join(project_root, 'build', 'gh-pages')
+        gh_pages_dir = os.path.join(self.repo_root, 'build', 'gh-pages')
         os.makedirs(gh_pages_dir, exist_ok=True)
 
         try:
@@ -287,20 +283,8 @@ class IndexAssembler:
             return False
 
 
-def main():
-    """Main entry point."""
-    parser = argparse.ArgumentParser(
-        description='Assemble package index from GitHub Release assets'
-    )
-    parser.add_argument(
-        '--dry-run',
-        action='store_true',
-        help='Simulate operations without downloading'
-    )
-
-    args = parser.parse_args()
-
-    assembler = IndexAssembler(dry_run=args.dry_run)
+def run(args):
+    assembler = IndexAssembler(repo_root=args.repo_root, dry_run=args.dry_run)
 
     print("Starting index assembly process...")
     if args.dry_run:
@@ -316,5 +300,16 @@ def main():
         return 1
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+def register(subparsers):
+    parser = subparsers.add_parser(
+        "assemble-index",
+        help="Assemble the channel index from GitHub Release assets.")
+    parser.add_argument(
+        '--repo-root', default='.',
+        help='Channel checkout holding packages/ and site/ (default: cwd).')
+    parser.add_argument(
+        '--dry-run',
+        action='store_true',
+        help='Simulate operations without downloading'
+    )
+    parser.set_defaults(func=run)

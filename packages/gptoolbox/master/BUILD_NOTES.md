@@ -190,7 +190,7 @@ macOS the only dynamic deps across all built MEX are `@rpath/libmx`,
   `vcpkg install` via `VCPKG_OVERLAY_TRIPLETS` (set in `build-package.yml`), so a
   future Windows+vcpkg package shares the cache (identical ABI) automatically —
   no per-package `--overlay-triplets` flag. Caveat: triplet-only edits don't
-  auto-dispatch builds — `affected_builds.py` watches only `packages/`.
+  auto-dispatch builds — `mip-channel affected` watches only `packages/`.
 - **CMake deps cache (embree) — still deferred.** embree is the remaining slow
   build (~6–10 min, every arch). Caching the CMake deps dir would need a stable
   build path (`compile.m` uses a random `tempname` today) and a pin-hash key —

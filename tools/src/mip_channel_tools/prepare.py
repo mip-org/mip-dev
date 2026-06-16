@@ -3,11 +3,11 @@
 Prepare a single package release for one architecture.
 
 Usage:
-  python scripts/prepare_one.py \
+  mip-channel prepare \
       --package-path packages/<name>/<release> \
       --architecture <arch>
 
-The script:
+The command:
   1. Reads recipe.yaml from the package release directory
   2. Fetches source per recipe.yaml (git clone or zip download)
   3. Overlays channel-provided files (mip.yaml, compile.m, test scripts, ...)
@@ -16,7 +16,7 @@ The script:
   6. Writes .release_version / .source_hash / .commit_hash side files
 
 If the requested architecture is not listed under any `builds:` entry of
-the package's mip.yaml, the script exits 0 without producing output
+the package's mip.yaml, the command exits 0 without producing output
 (the calling workflow then short-circuits the bundle/test/upload steps).
 
 If --force is not set and a matching .mhl already exists on the channel's
@@ -28,12 +28,11 @@ import os
 import sys
 import stat
 import shutil
-import argparse
 import hashlib
 import subprocess
 import requests
 import yaml
-from channel_config import get_base_url, release_tag_from_mhl
+from .config import get_base_url, release_tag_from_mhl
 
 
 def _rmtree_on_error(func, path, exc_info):
@@ -291,22 +290,7 @@ def fetch_source(recipe, target_dir):
         os.chdir(original_dir)
 
 
-def main():
-    parser = argparse.ArgumentParser(
-        description='Prepare a single package release for one architecture')
-    parser.add_argument(
-        '--package-path', required=True,
-        help='Path to the release dir, e.g. packages/<name>/<release>')
-    parser.add_argument(
-        '--architecture',
-        default=os.environ.get('BUILD_ARCHITECTURE'),
-        help='Target architecture (or $BUILD_ARCHITECTURE)')
-    parser.add_argument('--force', action='store_true')
-    parser.add_argument(
-        '--output-dir',
-        help='Output dir (default: build/prepared)')
-    args = parser.parse_args()
-
+def run(args):
     if not args.architecture:
         print("Error: --architecture or $BUILD_ARCHITECTURE required",
               file=sys.stderr)
@@ -421,5 +405,19 @@ def main():
     return 0
 
 
-if __name__ == '__main__':
-    sys.exit(main())
+def register(subparsers):
+    parser = subparsers.add_parser(
+        "prepare",
+        help="Prepare a single package release for one architecture.")
+    parser.add_argument(
+        '--package-path', required=True,
+        help='Path to the release dir, e.g. packages/<name>/<release>')
+    parser.add_argument(
+        '--architecture',
+        default=os.environ.get('BUILD_ARCHITECTURE'),
+        help='Target architecture (or $BUILD_ARCHITECTURE)')
+    parser.add_argument('--force', action='store_true')
+    parser.add_argument(
+        '--output-dir',
+        help='Output dir (default: build/prepared)')
+    parser.set_defaults(func=run)

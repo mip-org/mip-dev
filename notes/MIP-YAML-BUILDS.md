@@ -80,15 +80,15 @@ Backward-compat: list form untouched; `any` two-pass in `match_build` unchanged.
 ## Part B — channel (`mip-dev`; commit to main after the tool PR merges)
 
 1. **Shared arch-list helper.** Add `build_architectures(build) -> list` to
-   `scripts/channel_config.py` (already imported by channel scripts):
+   `tools/src/mip_channel_tools/config.py` (already imported by channel scripts):
    returns `build.get("architectures")` or `[build["architecture"]]` if the
    singular key is present, else `[]`. Replace the duplicated inline extraction
    in:
-   - `scripts/prepare_one.py` → `architectures_from_mip_yaml` (line ~191)
-   - `scripts/build_request_from_issue.py` → the `declared` loop (line ~119)
-   - `scripts/affected_builds.py` → `arches_from_mip_yaml`
-   - `scripts/scheduled_check.py` → its arch read
-2. **`scripts/package_setup.py`** — two changes:
+   - `tools/src/mip_channel_tools/prepare.py` → `architectures_from_mip_yaml` (line ~191)
+   - `tools/src/mip_channel_tools/build_request.py` → the `declared` loop (line ~119)
+   - `tools/src/mip_channel_tools/affected.py` → `arches_from_mip_yaml`
+   - `tools/src/mip_channel_tools/scheduled.py` → its arch read
+2. **`tools/src/mip_channel_tools/package_setup.py`** — two changes:
    - Find the build entry via the helper (so singular `architecture:` entries are
      found).
    - Setup resolution: if `build["setup"]` is a **list**, run it directly (the
@@ -109,19 +109,19 @@ Backward-compat: list form untouched; `any` two-pass in `match_build` unchanged.
 - Tool: `+mip/+config/read_mip_yaml.m` (only selection change), tests
   `tests/TestReadMipYaml.m`, `tests/TestMatchBuild.m`. (`match_build.m`,
   `resolve_build_config.m`, `get_build_field.m` need **no** change.)
-- Channel: `scripts/channel_config.py` (helper), `scripts/package_setup.py`
-  (setup list-or-dict + helper), `scripts/prepare_one.py`,
-  `scripts/build_request_from_issue.py`, `scripts/affected_builds.py`,
-  `scripts/scheduled_check.py`, `packages/gptoolbox/master/mip.yaml`.
+- Channel: `tools/src/mip_channel_tools/config.py` (helper), `tools/src/mip_channel_tools/package_setup.py`
+  (setup list-or-dict + helper), `tools/src/mip_channel_tools/prepare.py`,
+  `tools/src/mip_channel_tools/build_request.py`, `tools/src/mip_channel_tools/affected.py`,
+  `tools/src/mip_channel_tools/scheduled.py`, `packages/gptoolbox/master/mip.yaml`.
 
 ## Verification
 
 1. **Tool**: `tests/run_tests.m` in `/tmp/mip-fix` (singular-form cases green;
    list/`any` regressions pass). PR to `mip-org/mip`.
 2. **Channel scripts (local, no network)**: feed a singular-form `mip.yaml`
-   through `prepare_one.py --architecture linux_x86_64` and
-   `build_request_from_issue.py` (an `all` expansion) and confirm the arch
-   resolves; run `package_setup.py --architecture linux_x86_64` against the
+   through `mip-channel prepare --architecture linux_x86_64` and
+   `mip-channel build-request` (an `all` expansion) and confirm the arch
+   resolves; run `mip-channel package-setup --architecture linux_x86_64` against the
    migrated gptoolbox mip.yaml and confirm it runs the flat `setup:` list. Also
    confirm an old list+OS-dict package (fmm2d) still resolves and runs its
    `linux:` setup (backward-compat).

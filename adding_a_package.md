@@ -8,8 +8,8 @@ Unlike a "build everything on every push" channel, builds here run **one
 `(package, architecture)` pair at a time** and are triggered three ways:
 automatically on push to `main` (only for the packages a push touches), daily
 by a scheduled probe, or manually via a GitHub issue. The end-to-end flow for
-one pair: [`scripts/prepare_one.py`](scripts/prepare_one.py) clones the
-upstream source per `recipe.yaml` and overlays the channel-provided files;
+one pair: [`mip-channel prepare`](tools/src/mip_channel_tools/prepare.py) clones
+the upstream source per `recipe.yaml` and overlays the channel-provided files;
 [`scripts/bundle_one.m`](scripts/bundle_one.m) runs `mip bundle` (which sets up
 the MEX toolchain and runs `compile.m` if needed) to produce the `.mhl`;
 [`scripts/test_one.m`](scripts/test_one.m) installs/loads/tests the bundle and
@@ -136,7 +136,7 @@ Things to determine:
    `mip.yaml`, and the generated `.mip.json` metadata. Rules:
 
    - **Must be all lowercase.** The prepare step rejects non-lowercase names
-     (see [`scripts/prepare_one.py`](scripts/prepare_one.py) —
+     (see [`mip-channel prepare`](tools/src/mip_channel_tools/prepare.py) —
      "package name must be lowercase"). `TFOCS` → `tfocs`, `matGeom` →
      `matgeom`.
    - **`-` and `_` are both allowed.** Match the upstream spelling when
@@ -185,7 +185,7 @@ version (`1.2.9`) matching `mip.yaml` `version:`, or a branch name
 ## Step 3 — Write `recipe.yaml`
 
 `recipe.yaml` tells the prepare step where to fetch the upstream source. It is
-processed by [`scripts/prepare_one.py`](scripts/prepare_one.py).
+processed by [`mip-channel prepare`](tools/src/mip_channel_tools/prepare.py).
 
 ### Minimal form (clone default branch)
 
@@ -220,7 +220,7 @@ sources everything from upstream git repositories.
 ### Version rules (enforced by the prepare step)
 
 `validate_channel_version_rules` in
-[`scripts/prepare_one.py`](scripts/prepare_one.py) enforces:
+[`mip-channel prepare`](tools/src/mip_channel_tools/prepare.py) enforces:
 
 - **`recipe.yaml` must not contain a `version:` field.** The release directory
   name *is* the version.
@@ -658,11 +658,11 @@ mip load my_package
 
 ## Step 8 — Verify locally (optional but recommended)
 
-Install `requests` once (`pip install requests`) if needed. Prepare a single
-`(package, architecture)` pair the same way CI does:
+Install the channel tooling once (`pip install ./tools`) if needed. Prepare a
+single `(package, architecture)` pair the same way CI does:
 
 ```bash
-python3 scripts/prepare_one.py \
+python3 -m mip_channel_tools prepare \
   --package-path packages/<name>/<release> \
   --architecture <arch>
 ```

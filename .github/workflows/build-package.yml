@@ -228,19 +228,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python dependencies
+      - name: Install channel tooling
         # `python -m pip`, not bare `pip`: setup-python's pip wrapper bakes the
         # host tool-cache path into its shebang, so bare `pip` fails with "bad
         # interpreter" in the container. In the ubi8 container `python` is the
-        # native python3.9 from the toolchain step.
-        run: python -m pip install requests pyyaml
+        # native python3.9 from the toolchain step. Invoke the tools the same
+        # way (`python -m mip_channel_tools`) so the entry point never depends
+        # on a console-script shebang either.
+        run: python -m pip install ./tools
 
       - name: Prepare package
         env:
           BUILD_ARCHITECTURE: ${{ inputs.architecture }}
         shell: bash
         run: |
-          python scripts/prepare_one.py \
+          python -m mip_channel_tools prepare \
             --package-path "${{ inputs.package_path }}" \
             --architecture "${{ inputs.architecture }}" \
             ${{ inputs.force && '--force' || '' }}
@@ -317,7 +319,7 @@ jobs:
         if: steps.prepared_check.outputs.has_prepared == 'true'
         shell: bash
         run: |
-          python scripts/package_setup.py \
+          python -m mip_channel_tools package-setup \
             --architecture "${{ inputs.architecture }}" 2>&1 | tee /tmp/package_setup.log
 
           # Surface vcpkg binary-cache traffic in the job summary. The previous
@@ -708,12 +710,12 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python dependencies
+      - name: Install channel tooling
         # `python -m pip`, not bare `pip`: in the ubi8 container the runner
         # mounts the tool cache at /__t, but setup-python's pip wrapper has the
         # host path /opt/hostedtoolcache baked into its shebang and fails with
         # "bad interpreter". Going through the interpreter sidesteps that.
-        run: python -m pip install requests pyyaml
+        run: python -m pip install ./tools
 
       - name: Restore Homebrew for upload (macOS)
         # The macOS strip step renamed /opt/homebrew (which holds `gh`) to
@@ -730,7 +732,7 @@ jobs:
       - name: Upload to GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/upload_one.py
+        run: python -m mip_channel_tools upload
 
   assemble-and-deploy:
     name: assemble + deploy
@@ -753,17 +755,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Python dependencies
+      - name: Install channel tooling
         # `python -m pip`, not bare `pip`: in the ubi8 container the runner
         # mounts the tool cache at /__t, but setup-python's pip wrapper has the
         # host path /opt/hostedtoolcache baked into its shebang and fails with
         # "bad interpreter". Going through the interpreter sidesteps that.
-        run: python -m pip install requests pyyaml
+        run: python -m pip install ./tools
 
       - name: Assemble package index
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python scripts/assemble_index.py
+        run: python -m mip_channel_tools assemble-index
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v5

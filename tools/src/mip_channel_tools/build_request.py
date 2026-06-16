@@ -36,19 +36,17 @@ package references on the same line is an error.
 
 Subcommands:
 
-    validate --output-file PATH [--title-file PATH] [--repo-root DIR]
+    build-request validate --output-file PATH [--title-file PATH] [--repo-root DIR]
         Render the comment to post on issue-open. Confirms each named
         package folder exists in this repo.
 
-    apply --dispatch-file PATH [--errors-file PATH] [--repo-root DIR]
+    build-request apply --dispatch-file PATH [--errors-file PATH] [--repo-root DIR]
         Re-parse the issue and write one TSV row per dispatch
         (`<package_path>\\t<architecture>`) to --dispatch-file.
 """
 
-import argparse
 import os
 import re
-import sys
 from pathlib import Path
 
 import yaml
@@ -370,9 +368,11 @@ def cmd_apply(args):
     return 0
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    sub = ap.add_subparsers(dest="mode", required=True)
+def register(subparsers):
+    p = subparsers.add_parser(
+        "build-request",
+        help="Validate or apply an issue-driven build request.")
+    sub = p.add_subparsers(dest="mode", required=True)
 
     v = sub.add_parser("validate")
     v.add_argument("--output-file", required=True)
@@ -385,10 +385,3 @@ def main():
     a.add_argument("--errors-file", default=None)
     a.add_argument("--repo-root", default=".")
     a.set_defaults(func=cmd_apply)
-
-    args = ap.parse_args()
-    return args.func(args)
-
-
-if __name__ == "__main__":
-    sys.exit(main())

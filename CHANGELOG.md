@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Consolidate the workflow Python helpers into a `mip-channel-tools` package
+  under `tools/` (`mip-channel` CLI with subcommands: prepare, package-setup,
+  upload, assemble-index, build-request, affected, scheduled-check). Workflows
+  install it with `pip install ./tools` and invoke `python -m mip_channel_tools
+  <sub>`. The old `scripts/*.py` are removed (the MATLAB `.m` helpers stay).
+  `assemble-index` now takes `--repo-root` instead of deriving the channel root
+  from `__file__`. The package is self-contained for eventual extraction to its
+  own repo and publication on PyPI, so multiple channels can share it.
+
 - Add geometry_processing_package@master (any): Geometry Processing Package
   (Computational Geometry Group) — triangle-mesh I/O (OBJ/OFF/PLY), discrete
   operators (Laplace-Beltrami, gradient, areas), topology utilities, and
