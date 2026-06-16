@@ -17,6 +17,15 @@ if ~exist(buildDir, 'dir')
     mkdir(buildDir);
 end
 
+% FINUFFT supplies its own rand_r() under _WIN32 because MSVC lacks the POSIX
+% function. Under MinGW-w64 that declaration clashes with the toolchain's own
+% rand_r and fails to compile. rand_r is only used by the (unbuilt) test code,
+% so guard FINUFFT's version out for MinGW.
+guard_mingw(fullfile(srcRoot, 'include', 'finufft', 'finufft_utils.hpp'), ...
+    'generator for Windows platform[^\n]*\r?\n');
+guard_mingw(fullfile(srcRoot, 'src', 'finufft_utils.cpp'), ...
+    'supplied in linux/macosx\)[^\n]*\r?\n');
+
 % Step 1: Build the FINUFFT static library with CMake (MinGW Makefiles).
 fprintf('Configuring FINUFFT with CMake (MinGW Makefiles)...\n');
 cfgCmd = sprintf(['cmake -S "%s" -B "%s" -G "MinGW Makefiles"', ...
@@ -78,4 +87,23 @@ function filepath = find_file_recursive(searchDir, filename)
     else
         filepath = '';
     end
+end
+
+function guard_mingw(file, anchorPattern)
+    % Replace the `#ifdef _WIN32` immediately following anchorPattern with a
+    % guard that also excludes MinGW. CRLF-robust; errors if the anchor moves.
+    txt = fileread(file);
+    pat = ['(' anchorPattern ')#ifdef _WIN32'];
+    rep = '$1#if defined(_WIN32) && !defined(__MINGW32__)';
+    out = regexprep(txt, pat, rep, 'once');
+    if strcmp(out, txt)
+        error('guard_mingw: expected _WIN32 guard not found in %s', file);
+    end
+    fid = fopen(file, 'w');
+    if fid < 0
+        error('guard_mingw: cannot write %s', file);
+    end
+    fwrite(fid, out);
+    fclose(fid);
+    fprintf('  guarded _WIN32 rand_r block for MinGW in %s\n', file);
 end
