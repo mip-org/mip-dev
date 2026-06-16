@@ -28,7 +28,8 @@ A compiled MEX package. `compile.m` builds the FINUFFT C++ static library with
 CMake (using the bundled DUCC0 FFT backend, OpenMP off) and links it into the
 `finufft` MEX in `matlab/`, which the m-file wrappers (`finufft1d1.m`,
 `finufft_plan.m`, …) dispatch through. The C++ runtime is statically linked for
-portability. Currently built for `linux_x86_64`.
+portability. Built for `linux_x86_64`, `macos_arm64`, and `windows_x86_64`
+(macOS uses FFTW instead of the DUCC0 backend).
 
 ## Tests
 
