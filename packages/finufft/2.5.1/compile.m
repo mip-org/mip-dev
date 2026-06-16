@@ -12,6 +12,13 @@ setenv('LD_LIBRARY_PATH', '');
 setenv('DYLD_LIBRARY_PATH', '');
 restoreLd = onCleanup(@() restore_lib_path(origLd, origDyld)); %#ok<NASGU>
 
+% On Windows the channel's default MEX compiler is MinGW, but we build the
+% FINUFFT static library with MSVC (CMake's default generator). Re-select MSVC
+% for mex so the gateway links against the MSVC-built lib (matching C++ ABI).
+if ispc
+    setup_mex_compilers('windows_x86_64', 'msvc');
+end
+
 srcRoot = pwd;
 buildDir = fullfile(srcRoot, 'build_mex');
 
@@ -130,11 +137,17 @@ elseif isunix && ~ismac
     mexArgs{end+1} = 'LDFLAGS=$LDFLAGS -static-libstdc++ -static-libgcc';
 end
 
-% Link FFTW when not using DUCC0
+% Link FFTW when not using DUCC0. Link the static archives by full path so the
+% MEX does not depend on the Homebrew libfftw3.dylib at runtime (the test
+% machine strips the build environment, removing the Homebrew install).
 if use_fftw
-    mexArgs{end+1} = '-L/opt/homebrew/lib';
-    mexArgs{end+1} = '-lfftw3';
-    mexArgs{end+1} = '-lfftw3f';
+    fftwStatic = {'/opt/homebrew/lib/libfftw3.a', '/opt/homebrew/lib/libfftw3f.a'};
+    for ii = 1:numel(fftwStatic)
+        if ~exist(fftwStatic{ii}, 'file')
+            error('Static FFTW library not found at %s', fftwStatic{ii});
+        end
+        mexArgs{end+1} = fftwStatic{ii}; %#ok<AGROW>
+    end
 end
 
 % Output MEX file into the matlab/ directory (which is on the addpath)
