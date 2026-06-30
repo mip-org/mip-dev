@@ -98,8 +98,12 @@ elseif ispc
     setup_mex_compilers('windows_x86_64', 'msvc');
     genArg = ' -G "Visual Studio 17 2022" -A x64';
 
+    % Fetch the .zip, not the .tar.xz: windows-2022's bundled bsdtar hangs
+    % indefinitely extracting .tar.xz (the xz filter), whereas it unpacks zip
+    % and gzip reliably. (.tar.xz works on windows-2025, but we pin 2022 for
+    % MATLAB's MEX compiler.) The zip expands to the same CGAL-6.0.1/ tree.
     cgalRoot  = fetch_archive(['https://github.com/CGAL/cgal/releases/' ...
-        'download/v6.0.1/CGAL-6.0.1.tar.xz'], 'CGAL-6.0.1');
+        'download/v6.0.1/CGAL-6.0.1.zip'], 'CGAL-6.0.1');
     boostRoot = fetch_archive(['https://archives.boost.io/release/1.86.0/' ...
         'source/boost_1_86_0.tar.gz'], 'boost_1_86_0');
 
@@ -389,14 +393,22 @@ function root = fetch_archive(url, dirName)
 % Download a source/header archive and extract it; return the path to its
 % top-level <dirName> directory. Used on Windows to fetch the header-only CGAL
 % and Boost releases (never compiled). Windows ships curl.exe and a bsdtar
-% (tar.exe) that handles .tar.gz and .tar.xz.
+% (tar.exe); use .zip (CGAL) or .tar.gz (Boost) here, never .tar.xz — that
+% bsdtar build has no built-in xz, so on .tar.xz it shells out to an external
+% xz over a Windows pipe that deadlocks (the 6h CGAL hang). zip and gzip
+% decode in-process and are fine.
+%
+% Call System32 bsdtar by absolute path, not a bare "tar": some runners put
+% MSYS2's GNU tar first on PATH, and GNU tar cannot read .zip at all. bsdtar
+% handles both .zip and .tar.gz natively.
 work = tempname;
 mkdir(work);
 [~, ~, ext] = fileparts(url);
 arc = fullfile(work, ['src' ext]);
+tarExe = fullfile(getenv('SystemRoot'), 'System32', 'tar.exe');
 run_or_error(sprintf('curl -fL --retry 5 -o "%s" "%s"', arc, url), ...
     ['download ' dirName]);
-run_or_error(sprintf('tar -xf "%s" -C "%s"', arc, work), ['extract ' dirName]);
+run_or_error(sprintf('"%s" -xf "%s" -C "%s"', tarExe, arc, work), ['extract ' dirName]);
 root = fullfile(work, dirName);
 if ~isfolder(root)
     error('gptoolbox:fetchArchive', 'Expected %s after extracting %s', root, url);

@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- gptoolbox (Windows): fetch CGAL as `CGAL-6.0.1.zip` rather than `.tar.xz`, and
+  extract with System32 bsdtar by absolute path. On the windows-2022 runner the
+  System32 bsdtar (libarchive 3.8.4) has no built-in xz, so extracting `.tar.xz`
+  shells out to an external `xz` over a Windows pipe that deadlocks — the build
+  hung 6h at `[extract CGAL-6.0.1]` after `windows-latest` flipped to
+  windows-2022. zip/gzip decode in-process (~6s, verified on a live
+  windows-2022 runner); the absolute path also stops a bare `tar` from resolving
+  to MSYS2 GNU tar, which can't read `.zip`. The zip expands to the same
+  `CGAL-6.0.1/` tree, so nothing downstream changes.
+
 - Add finufft@2.5.1 (linux_x86_64, macos_arm64, windows_x86_64): FINUFFT — fast
   parallel nonuniform FFTs (types 1/2/3 in 1D/2D/3D), MATLAB interface (Flatiron
   Institute). The MEX is built from source with CMake (DUCC0 FFT backend on
